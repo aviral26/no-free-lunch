@@ -15,7 +15,7 @@ public class LogUtils {
 
     private static LogLevel LUCID_LOG_LEVEL;
 
-    private static Logger LOGGER;
+    private static Logger LOGGER = new SL4JLogger();
 
     public enum LogLevel {
         NONE(0), ERROR(1), WARN(2), DEBUG(3);
