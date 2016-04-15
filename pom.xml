@@ -40,5 +40,12 @@
             <version>1.1.7</version>
         </dependency>
 
+        <!-- Tapy by Square - QueueFile -->
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>tape</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+
     </dependencies>
 </project>
