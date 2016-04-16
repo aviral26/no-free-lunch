@@ -7,17 +7,40 @@ public class Message implements Serializable {
     private static final String LOG_TAG = "MESSAGE";
 
     private Type type;
-
+    /**
+     * If type = Type.SYNC and sender = client, then message = index into the list of servers to sync with.
+     *
+     * If type = Type.SYNC and sender = remote server with whom we are syncing, message = remote_TT +
+     * OBJECT_DELIMITER + event + LIST_DELIMITER + event ..... + LIST_DELIMITER + event
+     */
     private String message;
-
+    private Sender sender;
     private int node;
 
-    public enum Type {
-        POST, LOOKUP, SYNC
-    }
 
     public Message(Type type) {
         this.type = type;
+    }
+
+    public Message(Type type, String message, Sender sender){
+        this.type = type;
+        this.message = message;
+        this.sender = sender;
+    }
+    public Sender getSender() {
+        return sender;
+    }
+
+    public void setSender(Sender sender) {
+        this.sender = sender;
+    }
+
+    public enum Sender {
+        SERVER, CLIENT
+    }
+
+    public enum Type {
+        POST, LOOKUP, SYNC
     }
 
     public Type getType() {

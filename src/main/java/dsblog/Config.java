@@ -14,7 +14,6 @@ public class Config {
 
     private static Properties PROPERTIES;
     public static int NUMBER_OF_SERVERS;
-    public static String POST_DELIMITER = " |&&&&| ";
 
     private Config() {
     }

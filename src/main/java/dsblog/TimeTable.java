@@ -16,4 +16,9 @@ public class TimeTable {
         return tt[k][e.getNode()] >= e.getTimestamp();
     }
 
+    public static TimeTable fromString(String str){
+        // TODO
+        return null;
+    }
+
 }

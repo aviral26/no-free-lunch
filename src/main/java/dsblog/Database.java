@@ -1,5 +1,6 @@
 package dsblog;
 
+import common.Constants;
 import utils.LogUtils;
 
 import java.io.*;
@@ -26,7 +27,7 @@ public class Database {
     }
 
     public void insert(String blogPost) throws IOException {
-        dbWriter.append(++counter + blogPost + Config.POST_DELIMITER);
+        dbWriter.append(++counter + blogPost + Constants.OBJECT_DELIMITER);
         LogUtils.debug(LOG_TAG, "Written post to file. Counter = " + counter);
     }
 
