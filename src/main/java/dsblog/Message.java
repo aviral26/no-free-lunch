@@ -11,7 +11,7 @@ public class Message implements Serializable {
      * If type = Type.SYNC and sender = client, then message = index into the list of servers to sync with.
      *
      * If type = Type.SYNC and sender = remote server with whom we are syncing, message = remote_TT +
-     * OBJECT_DELIMITER + event + LIST_DELIMITER + event ..... + LIST_DELIMITER + event
+     * OBJECT_DELIMITER + event + LIST_DELIMITER + event ..... + LIST_DELIMITER + event + LIST_DELIMITER
      */
     private String message;
     private Sender sender;
@@ -22,10 +22,11 @@ public class Message implements Serializable {
         this.type = type;
     }
 
-    public Message(Type type, String message, Sender sender){
+    public Message(Type type, String message, Sender sender, int id){
         this.type = type;
         this.message = message;
         this.sender = sender;
+        this.node = id;
     }
     public Sender getSender() {
         return sender;

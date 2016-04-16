@@ -28,7 +28,7 @@ public class Database {
 
     public void insert(String blogPost) throws IOException {
         dbWriter.append(++counter + blogPost + Constants.OBJECT_DELIMITER);
-        LogUtils.debug(LOG_TAG, "Written post to file. Counter = " + counter);
+        LogUtils.debug(LOG_TAG, "Written new post to file. Counter = " + counter);
     }
 
     public String lookUp() throws IOException {
@@ -37,7 +37,7 @@ public class Database {
         String temp;
         while((temp = dbReader.readLine()) != null)
             result.append(temp);
-
+        LogUtils.debug(LOG_TAG, "Look up successful.");
         return result.toString();
     }
 }
