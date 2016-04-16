@@ -5,9 +5,6 @@ import utils.CommonUtils;
 
 import java.util.List;
 
-/**
- * Created by aviral on 4/11/16.
- */
 public class StartServers {
 
     private static final String LOG_TAG = "START_SERVERS";
