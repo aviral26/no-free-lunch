@@ -13,6 +13,8 @@ public class Config {
     private static String LOG_TAG = "CONFIG";
 
     private static Properties PROPERTIES;
+    public static int NUMBER_OF_SERVERS;
+    public static String POST_DELIMITER = " |&&&&| ";
 
     private Config() {
     }
@@ -21,6 +23,7 @@ public class Config {
     public static void init() {
         try {
             PROPERTIES = new Gson().fromJson(new FileReader("lucid.config"), Properties.class);
+            NUMBER_OF_SERVERS = getNumberOfServers();
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to init", e);
         }
@@ -34,5 +37,9 @@ public class Config {
 
     public static int getLogLevel() {
         return PROPERTIES.getLogLevel();
+    }
+
+    public static int getNumberOfServers() {
+        return getServerAddresses().size();
     }
 }

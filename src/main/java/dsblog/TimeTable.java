@@ -5,7 +5,7 @@ public class TimeTable {
     private int[][] tt;
 
     private TimeTable(){
-        tt = new int[Config.NUMBER_OF_SERVERS][NUMBER_OF_SERVERS];
+        tt = new int[Config.NUMBER_OF_SERVERS][Config.NUMBER_OF_SERVERS];
     }
 
     public void incrementTT(int i, int j){
