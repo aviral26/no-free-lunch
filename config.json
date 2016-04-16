@@ -1,0 +1,20 @@
+{
+  "servers": [
+    {
+      "ip": "127.0.0.1",
+      "clientPort": 8000,
+      "serverPort": 9000
+    },
+    {
+      "ip": "127.0.0.1",
+      "clientPort": 8001,
+      "serverPort": 9001
+    },
+    {
+      "ip": "127.0.0.1",
+      "clientPort": 8002,
+      "serverPort": 9002
+    }
+  ],
+  "logLevel": 3
+}

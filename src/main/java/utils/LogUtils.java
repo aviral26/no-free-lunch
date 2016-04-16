@@ -1,8 +1,5 @@
 package utils;
 
-import ch.qos.logback.classic.Level;
-import org.slf4j.LoggerFactory;
-
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -11,11 +8,19 @@ public class LogUtils {
 
     private static final String LOG_PREFIX = "[no-free-lunch] ";
 
-    private static LogLevel COPYCAT_LOG_LEVEL;
+    private static LogLevel LOG_LEVEL;
 
-    private static LogLevel LUCID_LOG_LEVEL;
+    private static Logger LOGGER;
 
-    private static Logger LOGGER = new SL4JLogger();
+    public static void setLogLevel(int logLevel) {
+        LOG_LEVEL = LogLevel.getLogLevelById(logLevel);
+
+        if (logLevel > LogLevel.NONE.getId() && logLevel <= LogLevel.DEBUG.getId()) {
+            LOGGER = new PrintLogger();
+        } else {
+            LOGGER = new NoOpLogger();
+        }
+    }
 
     public enum LogLevel {
         NONE(0), ERROR(1), WARN(2), DEBUG(3);
@@ -108,41 +113,6 @@ public class LogUtils {
         return String.format(Locale.US, "%s %s: %s ", LOG_PREFIX, tag, caller);
     }
 
-    private static class SL4JLogger implements Logger {
-
-        private org.slf4j.Logger LOGGER = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-
-        @Override
-        public void debug(String message, Throwable throwable) {
-            LOGGER.debug(message, throwable);
-        }
-
-        @Override
-        public void debug(String message) {
-            LOGGER.debug(message);
-        }
-
-        @Override
-        public void warn(String message, Throwable throwable) {
-            LOGGER.warn(message, throwable);
-        }
-
-        @Override
-        public void warn(String message) {
-            LOGGER.warn(message);
-        }
-
-        @Override
-        public void error(String message, Throwable throwable) {
-            LOGGER.error(message, throwable);
-        }
-
-        @Override
-        public void error(String message) {
-            LOGGER.error(message);
-        }
-    }
-
     private static class NoOpLogger implements Logger {
 
         @Override
@@ -180,42 +150,42 @@ public class LogUtils {
 
         @Override
         public void debug(String message, Throwable throwable) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.DEBUG.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.DEBUG.ordinal()) {
                 print(message, throwable);
             }
         }
 
         @Override
         public void debug(String message) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.DEBUG.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.DEBUG.ordinal()) {
                 print(message, null);
             }
         }
 
         @Override
         public void warn(String message, Throwable throwable) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.WARN.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.WARN.ordinal()) {
                 print(message, throwable);
             }
         }
 
         @Override
         public void warn(String message) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.WARN.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.WARN.ordinal()) {
                 print(message, null);
             }
         }
 
         @Override
         public void error(String message, Throwable throwable) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.ERROR.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.ERROR.ordinal()) {
                 print(message, throwable);
             }
         }
 
         @Override
         public void error(String message) {
-            if (LUCID_LOG_LEVEL.ordinal() >= LogLevel.ERROR.ordinal()) {
+            if (LOG_LEVEL.ordinal() >= LogLevel.ERROR.ordinal()) {
                 print(message, null);
             }
         }
@@ -223,9 +193,11 @@ public class LogUtils {
         synchronized private void print(String message, Throwable throwable) {
             if (message != null) {
                 System.out.println(message);
+                System.out.flush();
             }
             if (throwable != null) {
                 throwable.printStackTrace();
+                System.err.flush();
             }
         }
     }
