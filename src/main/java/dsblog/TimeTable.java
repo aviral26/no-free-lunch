@@ -1,11 +1,20 @@
 package dsblog;
 
+import common.Constants;
+
 public class TimeTable {
 
     private int[][] tt;
 
     TimeTable(){
         tt = new int[Config.NUMBER_OF_SERVERS][Config.NUMBER_OF_SERVERS];
+    }
+
+    public TimeTable(int[][] table){
+        tt = new int[Config.NUMBER_OF_SERVERS][Config.NUMBER_OF_SERVERS];
+        for(int i = 0; i < Config.NUMBER_OF_SERVERS; i++)
+            for(int j = 0; j < Config.NUMBER_OF_SERVERS; j++)
+                tt[i][j] = table[i][j];
     }
 
     public void incrementTT(int i, int j){
@@ -21,13 +30,30 @@ public class TimeTable {
     }
 
     public static TimeTable fromString(String str){
-        // TODO
-        return null;
+
+        int[][] table = new int[Config.NUMBER_OF_SERVERS][Config.NUMBER_OF_SERVERS];
+        String[] rows = str.split(Constants.ROW_DELIMITER);
+        int i = 0;
+        for(String row : rows){
+            String[] elements = row.split(Constants.ELEMENT_DELIMITER);
+            for(int j = 0; j < Config.NUMBER_OF_SERVERS; j++)
+                table[i][j] = Integer.parseInt(elements[j]);
+            i++;
+        }
+        return new TimeTable(table);
     }
 
     public String toString(){
-        // TODO
-        return null;
+        StringBuilder table = new StringBuilder("");
+        StringBuilder row;
+
+        for(int i = 0; i < Config.NUMBER_OF_SERVERS; i++){
+            row = new StringBuilder("");
+            for(int j = 0; j < Config.NUMBER_OF_SERVERS; j++)
+                row.append(tt[i][j]).append(Constants.ELEMENT_DELIMITER);
+            table.append(row).append(Constants.ROW_DELIMITER);
+        }
+        return table.toString();
     }
 
     public void updateSelf(TimeTable other, int selfID, int otherID){

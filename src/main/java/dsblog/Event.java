@@ -4,7 +4,7 @@ import utils.LogUtils;
 
 public class Event {
 
-    private final String LOG_TAG = "Event";
+    private static final String LOG_TAG = "Event";
     private int timestamp;
     private String value;
     private int node;

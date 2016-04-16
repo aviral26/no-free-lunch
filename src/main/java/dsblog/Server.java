@@ -140,7 +140,7 @@ public class Server {
 
         StringBuilder events_str = new StringBuilder("");
 
-        // Determine which events to send to other server by examining each event in log.
+        // Determine which events to send to other server by examining each event in log, and send them.
         try {
             readWriteLock.readLock().lock();
             LogUtils.debug(LOG_TAG, "Acquired read-lock. Reading...");
@@ -148,13 +148,35 @@ public class Server {
             for (Event e : events)
                 if (!timeTable.hasrec(e, message.getNode()))
                     events_str.append(e.toString() + Constants.LIST_DELIMITER);
+
+            objectOutputStream.writeObject(new Message(Message.Type.SYNC, timeTable.toString() + Constants
+                    .OBJECT_DELIMITER + events_str, Message.Sender.SERVER, id));
         }
         finally {
             readWriteLock.readLock().unlock();
             LogUtils.debug(LOG_TAG, "Read-lock released.");
         }
 
-        // TODO
+        // Wait for acknowledgement from other server.
+        try{
+            Message ack = (Message) objectInputStream.readObject();
+
+            if(ack.getMessage().equals(Constants.STATUS_OK)){
+                try{
+                    LogUtils.debug(LOG_TAG, "Waiting for write-lock to garbage collect log.");
+                    readWriteLock.writeLock().lock();
+                    garbageCollectLog();
+                }
+                finally {
+                    readWriteLock.writeLock().unlock();
+                }
+            }
+
+        }
+        catch(ClassNotFoundException e){
+            LogUtils.error(LOG_TAG, "Something went wrong while handling acknowledgement of SYNC.", e);
+        }
+
     }
 
     private void handleSyncMessageFromClient (Message message, ObjectOutputStream objectOutputStream) throws
@@ -162,47 +184,56 @@ public class Server {
 
         // Assuming content of message is an integer value indexing into the list of servers.
         Address serverToSyncWith = Config.getServerAddresses().get(Integer.parseInt(message.getMessage()));
+        ObjectOutputStream serverOutputStream = null;
+        Message response;
+        Socket socket = null;
 
-        try{
+        try {
             // Send sync message to other server.
-            Socket socket = new Socket(serverToSyncWith.getIp(), serverToSyncWith.getServerPort());
-            ObjectOutputStream serverWriter = new ObjectOutputStream(socket.getOutputStream());
-            serverWriter.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_SYNC, Message.Sender.SERVER, id));
+            socket = new Socket(serverToSyncWith.getIp(), serverToSyncWith.getServerPort());
+            serverOutputStream = new ObjectOutputStream(socket.getOutputStream());
+            serverOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_SYNC, Message.Sender.SERVER, id));
 
             // Wait for the other server to respond back with its TT and a subset of its log entries.
             ObjectInputStream serverReader = new ObjectInputStream(socket.getInputStream());
             LogUtils.debug(LOG_TAG, "Waiting for reply to SYNC message from remote server.");
-            Message response = (Message) serverReader.readObject();
+            response = (Message) serverReader.readObject();
 
-            // Acknowledge message received to other server.
-            serverWriter.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_OK, Message.Sender.SERVER, id));
+            // Acknowledge message received to other server. (Not blocking remote server here for update on this end.)
+            serverOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_OK, Message.Sender.SERVER, id));
             LogUtils.debug(LOG_TAG, "Acknowledged receipt of TT and log.");
-
-            // Update self TT, Database and Log atomically.
-            String[] response_str = response.getMessage().split(Constants.OBJECT_DELIMITER);
-            try {
-                readWriteLock.writeLock().lock();
-                LogUtils.debug(LOG_TAG, "Acquired write-lock. Updating...");
-                timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
-                updateSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
-            }
-            finally {
-                readWriteLock.writeLock().unlock();
-                LogUtils.debug(LOG_TAG, "Write-lock released.");
-            }
-
-            // Reply to client status OK.
-            objectOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_OK, Message.Sender.SERVER,
-             id));
-            LogUtils.debug(LOG_TAG, "Acknowledged SYNC complete to client.");
         }
-        catch(Exception e){
+        catch(Exception e) {
             LogUtils.error(LOG_TAG, "Something went wrong while syncing with the following remote server: " +
                     serverToSyncWith, e);
-            // Reply to client sync unsuccessful.
-            objectOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_FAIL, Message.Sender
-                    .SERVER, id));
+            if(serverOutputStream != null)
+                serverOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_FAIL, Message.Sender.SERVER, id));
+
+            objectOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_FAIL, Message.Sender.SERVER, id));
+            return;
         }
+        finally {
+            CommonUtils.closeQuietly(socket);
+            CommonUtils.closeQuietly(serverOutputStream);
+        }
+
+        // Update self TT, Database and Log atomically.
+        String[] response_str = response.getMessage().split(Constants.OBJECT_DELIMITER);
+        try {
+            LogUtils.debug(LOG_TAG, "Waiting for write-log to update log, database and timetable.");
+            readWriteLock.writeLock().lock();
+            timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
+            updateSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
+        } finally {
+            readWriteLock.writeLock().unlock();
+            LogUtils.debug(LOG_TAG, "Write-lock released.");
+        }
+        LogUtils.debug(LOG_TAG, "Updated local log, database and timetable.");
+
+        // Reply to client status OK.
+        objectOutputStream.writeObject(new Message(Message.Type.SYNC, Constants.STATUS_OK, Message.Sender.SERVER, id));
+
+        LogUtils.debug(LOG_TAG, "Acknowledged SYNC complete to client.");
     }
 
     private void updateSelfLogAndDatabase(List<Event> events) throws IOException{
@@ -220,6 +251,10 @@ public class Server {
         for(String event_str : events_str)
             events.add(Event.fromString(event_str));
         return null;
+    }
+
+    private void garbageCollectLog(){
+        // TODO
     }
 
 }

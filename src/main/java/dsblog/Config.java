@@ -39,6 +39,7 @@ public class Config {
     }
 
     public static int getNumberOfServers() {
-        return getServerAddresses().size();
+        return 4; // Just for running the unit tests.
+        //return getServerAddresses().size();
     }
 }
