@@ -18,7 +18,7 @@ public class Database {
     }
 
     public void insert(String blogPost) throws IOException {
-        dbWriter.write(++counter + blogPost + POST_DELIMITER);
+        dbWriter.write(++counter + blogPost + Config.POST_DELIMITER);
         LogUtils.debug(LOG_TAG, "Written post to file. Counter = " + counter);
     }
 
