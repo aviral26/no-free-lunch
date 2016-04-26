@@ -1,10 +1,13 @@
 package dsblog;
 
 import com.google.gson.Gson;
+import com.sun.xml.internal.bind.v2.runtime.reflect.opt.Const;
 import common.Address;
+import common.Constants;
 import common.Properties;
 import utils.LogUtils;
 
+import java.io.File;
 import java.io.FileReader;
 import java.util.List;
 
@@ -21,8 +24,9 @@ public class Config {
     // Must init
     public static void init() {
         try {
-            PROPERTIES = new Gson().fromJson(new FileReader("lucid.config"), Properties.class);
+            PROPERTIES = Constants.UNIT_TESTING ? new Properties() : new Gson().fromJson(new FileReader("lucid.config"), Properties.class);
             NUMBER_OF_SERVERS = getNumberOfServers();
+            LogUtils.debug(LOG_TAG, "Config initialized.");
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to init", e);
         }
@@ -39,7 +43,6 @@ public class Config {
     }
 
     public static int getNumberOfServers() {
-        return 4; // Just for running the unit tests.
-        //return getServerAddresses().size();
+        return getServerAddresses().size();
     }
 }

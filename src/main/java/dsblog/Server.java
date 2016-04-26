@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Server {
 
-    private static String LOG_TAG = "SERVER";
+    private String LOG_TAG = "SERVER";
     private Address address;
     private int id;
     private Log log;
@@ -26,11 +26,15 @@ public class Server {
     private TimeTable timeTable;
     private final ReadWriteLock readWriteLock;
 
+    /**
+     * Constructor.
+     * @param id We use this id to index into the time table.
+     */
     public Server(int id) {
         this.id = id;
         this.address = Config.getServerAddresses().get(id);
-
         LOG_TAG += "-" + id;
+        LogUtils.debug(LOG_TAG, "Server ID: " + id + " IP Address: " + address.getIp() + " Client port: " + address.getClientPort() + " Server port: " + address.getServerPort());
 
         log = new Log(id);
         database = new Database(id);
@@ -52,7 +56,7 @@ public class Server {
                     }, "handle-server-thread");
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Could not create server socket", e);
+                LogUtils.error(LOG_TAG, "Could not create server socket.", e);
             }
         };
 
@@ -70,7 +74,7 @@ public class Server {
                     }, "handle-client-thread");
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Could not create client socket", e);
+                LogUtils.error(LOG_TAG, "Could not create client socket.", e);
             }
         };
 
@@ -87,7 +91,7 @@ public class Server {
                 objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
                 handleMessage((Message) objectInputStream.readObject(), objectInputStream, objectOutputStream);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went wrong in handling server message", e);
+                LogUtils.error(LOG_TAG, "Something went wrong while handling server message.", e);
             } finally {
                 CommonUtils.closeQuietly(objectInputStream);
                 CommonUtils.closeQuietly(objectOutputStream);
@@ -99,21 +103,70 @@ public class Server {
     }
 
     private void handleMessage(Message message, ObjectInputStream objectInputStream, ObjectOutputStream
-            objectOutputStream) throws
-            Exception {
+            objectOutputStream) throws IOException {
         switch (message.getType()) {
             case POST:
+                try{
+                    LogUtils.debug(LOG_TAG, "Calling handler for POST message.");
+                    handlePostMessage(message, objectOutputStream);
+                }
+                catch(Exception e){
+                    LogUtils.error(LOG_TAG, "Something went wrong while handling post message.", e);
+                    objectOutputStream.writeObject(new Message(Message.Type.POST, Constants.STATUS_FAIL, Message.Sender.SERVER, id));
+                }
                 break;
             case LOOKUP:
+                try {
+                    LogUtils.debug(LOG_TAG, "Calling handler for LOOKUP message.");
+                    handleLookupMessage(message, objectOutputStream);
+                }
+                catch(Exception e){
+                    LogUtils.error(LOG_TAG, "Something went wrong while handling look-up message.", e);
+                    objectOutputStream.writeObject(new Message(Message.Type.POST, Constants.STATUS_FAIL, Message.Sender.SERVER, id));
+                }
                 break;
             case SYNC:
                 try{
+                    LogUtils.debug(LOG_TAG, "Calling handler for SYNC message.");
                     handleSyncMessage(message, objectInputStream, objectOutputStream);
                 }
-                catch(UnidentifiedSyncMessageException | IOException e){
-                    LogUtils.error(LOG_TAG, "Could not handle sync message.", e);
+                catch (Exception e){
+                    LogUtils.error(LOG_TAG, "Something went wrong while handling sync message.", e);
+                    objectOutputStream.writeObject(new Message(Message.Type.POST, Constants.STATUS_FAIL, Message.Sender.SERVER, id));
                 }
                 break;
+        }
+    }
+
+    private void handlePostMessage(Message message, ObjectOutputStream objectOutputStream) throws IOException {
+        String post = message.getMessage();
+        Event e = new Event(post, id, timeTable.incrementAndReadMyTimestamp(id));
+
+        // Acquire write log and update self log and database.
+        try{
+            LogUtils.debug(LOG_TAG, "Waiting for write lock...");
+            readWriteLock.writeLock().lock();
+            writeSelfLogAndDatabase(e);
+        }
+        finally {
+            readWriteLock.writeLock().unlock();
+            LogUtils.debug(LOG_TAG, "Update finished. Released write lock.");
+        }
+
+        // Send acknowledgement to client.
+        objectOutputStream.writeObject(new Message(Message.Type.POST, Constants.STATUS_OK, Message.Sender.SERVER, id));
+    }
+
+    private void handleLookupMessage(Message message, ObjectOutputStream objectOutputStream) throws IOException {
+        // Acquire read lock and send the whole data file to the client.
+        try {
+            LogUtils.debug(LOG_TAG, "Waiting to acquire read lock...");
+            readWriteLock.readLock().lock();
+            objectOutputStream.writeObject(new Message(Message.Type.LOOKUP, "All posts:\n" + database.lookUp(), Message.Sender.SERVER, id));
+        }
+        finally {
+            readWriteLock.readLock().unlock();
+            LogUtils.debug(LOG_TAG, "Read lock released.");
         }
     }
 
@@ -130,7 +183,6 @@ public class Server {
                 break;
             default:
                 throw new UnidentifiedSyncMessageException();
-
         }
 
     }
@@ -142,8 +194,8 @@ public class Server {
 
         // Determine which events to send to other server by examining each event in log, and send them.
         try {
+            LogUtils.debug(LOG_TAG, "Acquiring read-lock...");
             readWriteLock.readLock().lock();
-            LogUtils.debug(LOG_TAG, "Acquired read-lock. Reading...");
             List<Event> events = log.readLog();
             for (Event e : events)
                 if (!timeTable.hasrec(e, message.getNode()))
@@ -196,7 +248,7 @@ public class Server {
 
             // Wait for the other server to respond back with its TT and a subset of its log entries.
             ObjectInputStream serverReader = new ObjectInputStream(socket.getInputStream());
-            LogUtils.debug(LOG_TAG, "Waiting for reply to SYNC message from remote server.");
+            LogUtils.debug(LOG_TAG, "Waiting for reply to SYNC message from remote server...");
             response = (Message) serverReader.readObject();
 
             // Acknowledge message received to other server. (Not blocking remote server here for update on this end.)
@@ -223,7 +275,7 @@ public class Server {
             LogUtils.debug(LOG_TAG, "Waiting for write-log to update log, database and timetable.");
             readWriteLock.writeLock().lock();
             timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
-            updateSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
+            writeSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
         } finally {
             readWriteLock.writeLock().unlock();
             LogUtils.debug(LOG_TAG, "Write-lock released.");
@@ -236,12 +288,15 @@ public class Server {
         LogUtils.debug(LOG_TAG, "Acknowledged SYNC complete to client.");
     }
 
-    private void updateSelfLogAndDatabase(List<Event> events) throws IOException{
+    private void writeSelfLogAndDatabase(List<Event> events) throws IOException{
         // Append all events to log and insert in database.
-        for(Event e : events) {
-            log.append(e);
-            database.insert(e.getValue());
-        }
+        for(Event e : events)
+            writeSelfLogAndDatabase(e);
+    }
+
+    private void writeSelfLogAndDatabase(Event e) throws IOException{
+        log.append(e);
+        database.insert(e.getValue());
     }
 
     private List<Event> listOfEventsFromString(String str){

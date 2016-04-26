@@ -22,9 +22,17 @@ public class Constants {
     public static final String ROW_DELIMITER = " !row! ";
 
     /**
-     * Message status constants.
+     * Server status reply constants.
      */
-    public static final String STATUS_SYNC = "__0__";
-    public static final String STATUS_OK = "__1__";
-    public static final String STATUS_FAIL = "__2__";
+    public static final String STATUS_SYNC = "SYNC";
+    public static final String STATUS_OK = "SUCCESS";
+    public static final String STATUS_FAIL = "FAIL";
+
+    public static final String DB_FILE = "/home/aviral/SERVER-DB_FILE";
+    public static final String LOG_FILE = "/home/aviral/SERVER-LOG_FILE";
+
+    /**
+     * Unit testing switch. Set to false when deploying.
+     */
+    public static final boolean UNIT_TESTING = true;
 }

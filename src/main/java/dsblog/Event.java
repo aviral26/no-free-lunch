@@ -9,6 +9,15 @@ public class Event {
     private String value;
     private int node;
 
+    public Event(){
+    }
+
+    public Event(String value, int node, int timestamp){
+        this.value = value;
+        this.node = node;
+        this.timestamp = timestamp;
+    }
+
     public int getTimestamp() {
         return timestamp;
     }

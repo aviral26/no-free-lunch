@@ -4,21 +4,22 @@ import common.Constants;
 import utils.LogUtils;
 
 import java.io.*;
+import java.util.Scanner;
 
 public class Database {
 
     private String LOG_TAG = "Database";
-    private BufferedWriter dbWriter;
-    private BufferedReader dbReader;
+    private FileOutputStream dbWriter;
+    private FileInputStream dbReader;
     private int counter;
     private String DB_FILE;
 
     Database(int serverID){
         LOG_TAG += "-" + serverID;
-        DB_FILE = "~/.SERVER-" + serverID + "-DB_FILE";
+        DB_FILE = Constants.DB_FILE + "-" + serverID;
         counter = 0;
         try{
-            dbWriter = new BufferedWriter(new FileWriter(DB_FILE));
+            dbWriter = new FileOutputStream(DB_FILE, false); // Create a new file whether it exists or not.
         }
         catch(IOException e){
             LogUtils.error(LOG_TAG, "Failed to initialize DB file.", e);
@@ -27,17 +28,15 @@ public class Database {
     }
 
     public void insert(String blogPost) throws IOException {
-        dbWriter.append(++counter + blogPost + Constants.OBJECT_DELIMITER);
+        dbWriter.write(("Post number " + ++counter + ". " + blogPost + Constants.OBJECT_DELIMITER).getBytes());
         LogUtils.debug(LOG_TAG, "Written new post to file. Counter = " + counter);
     }
 
     public String lookUp() throws IOException {
-        dbReader = new BufferedReader(new FileReader(DB_FILE));
-        StringBuilder result = new StringBuilder("");
-        String temp;
-        while((temp = dbReader.readLine()) != null)
-            result.append(temp);
+        dbReader = new FileInputStream(DB_FILE);
+        byte[] file = new byte[(int)(new File(DB_FILE).length())];
+        dbReader.read(file);
         LogUtils.debug(LOG_TAG, "Look up successful.");
-        return result.toString();
+        return new String(file);
     }
 }

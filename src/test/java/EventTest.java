@@ -4,6 +4,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.sun.xml.internal.ws.dump.LoggingDumpTube.Position.Before;
+
 
 public class EventTest {
 
@@ -19,11 +21,7 @@ public class EventTest {
     @Test
     public void testToString(){
 
-        Event e = new Event();
-        e.setTimestamp(5);
-        e.setValue("This is a dummy event.");
-        e.setNode(2);
-
+        Event e = new Event("This is a dummy event.", 2, 5);
         Event newE = Event.fromString(e.toString());
 
         assert e.getTimestamp() == newE.getTimestamp();

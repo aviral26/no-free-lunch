@@ -8,6 +8,8 @@ public class Message implements Serializable {
 
     private Type type;
     /**
+     * If type = Type.POST and sender = client, then message = content of post.
+     *
      * If type = Type.SYNC and sender = client, then message = index into the list of servers to sync with.
      *
      * If type = Type.SYNC and sender = remote server with whom we are syncing, message = remote_TT +

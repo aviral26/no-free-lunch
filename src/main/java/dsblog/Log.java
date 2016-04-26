@@ -11,15 +11,15 @@ import java.util.Scanner;
 public class Log {
 
     private String LOG_TAG = "Log";
-    private PrintWriter logWriter;
-    private Scanner logReader;
+    private FileOutputStream logWriter;
+    private FileInputStream logReader;
     private String LOG_FILE;
 
     public Log(int serverID){
         LOG_TAG += "-" + serverID;
-        LOG_FILE = "~/.SERVER-" + serverID + "-LOG_FILE";
+        LOG_FILE = Constants.LOG_FILE + "-" + serverID;
         try{
-            logWriter = new PrintWriter(new BufferedWriter(new FileWriter(LOG_FILE)));
+            logWriter = new FileOutputStream(LOG_FILE, false); // Create a new file each time.
         }
         catch(IOException e){
             LogUtils.error(LOG_TAG, "Failed to initialize Log file.", e);
@@ -28,17 +28,19 @@ public class Log {
     }
 
     public void append(Event e) throws IOException {
-        logWriter.write(e.toString() + Constants.OBJECT_DELIMITER);
+        logWriter.write((e.toString() + Constants.OBJECT_DELIMITER).getBytes());
         LogUtils.debug(LOG_TAG, "Appended new event to log.");
     }
 
     public List<Event> readLog() throws IOException{
-        logReader = new Scanner(new BufferedReader(new FileReader(LOG_FILE)));
-        logReader.useDelimiter(Constants.OBJECT_DELIMITER);
+        logReader = new FileInputStream(LOG_FILE);
+        byte[] file = new byte[(int) new File(LOG_FILE).length()];
         List<Event> events = new ArrayList<>();
+        logReader.read(file);
 
-        while(logReader.hasNext())
-            events.add(Event.fromString(logReader.next()));
+        String[] file_str = (new String(file)).split(Constants.OBJECT_DELIMITER);
+        for(String s : file_str)
+            events.add(Event.fromString(s));
 
         LogUtils.debug(LOG_TAG, "Read " + events.size() + " events from log.");
         return events;
