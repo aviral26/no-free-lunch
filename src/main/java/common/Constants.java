@@ -28,8 +28,8 @@ public class Constants {
     public static final String STATUS_OK = "SUCCESS";
     public static final String STATUS_FAIL = "FAIL";
 
-    public static final String DB_FILE = "/Users/aviral/Hogwarts/CS-271//no-free-lunch/SERVER-DB_FILE";
-    public static final String LOG_FILE = "/Users/aviral/Hogwarts/CS-271//no-free-lunch/SERVER-LOG_FILE";
+    public static final String DB_FILE = "SERVER-DB_FILE";
+    public static final String LOG_FILE = "SERVER-LOG_FILE";
 
     /**
      * Unit testing switch. Set to false when deploying.
