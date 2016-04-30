@@ -1,10 +1,7 @@
 import com.sun.xml.internal.bind.v2.runtime.reflect.opt.Const;
 import common.Address;
 import common.Constants;
-import dsblog.Config;
-import dsblog.Message;
-import dsblog.Server;
-import dsblog.StartServers;
+import dsblog.*;
 import utils.LogUtils;
 
 import java.io.*;
@@ -140,6 +137,16 @@ public class ServerTest {
         logFileReader.read(file_log);
         System.out.println(new String(file_log, StandardCharsets.US_ASCII));
 
+
+        Client client = new Client();
+        client.doPost(2, "First test message to 2.");
+        client.doPost(2, "Second test message to 2.");
+
+        System.out.println("Lookup server 2: " + client.doLookup(2));
+
+        client.doSync(2, 0);
+
+        System.out.println("Lookup server 2 after syncing with server 0: " + client.doLookup(2));
 
         System.out.println("Done.");
     }

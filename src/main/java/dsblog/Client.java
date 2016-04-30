@@ -9,11 +9,8 @@ import java.net.Socket;
 
 public class Client {
 
-    public Client() {
-        Config.init();
-    }
-
     public static void main(String[] args) {
+        Config.init();
         Client client = new Client();
         switch (args[0]) {
             case "p":
