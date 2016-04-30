@@ -214,14 +214,17 @@ public class Server {
             Message ack = (Message) objectInputStream.readObject();
 
             if(ack.getMessage().equals(Constants.STATUS_OK)){
+                LogUtils.debug(LOG_TAG, "Received status OK to SYNC reply.");
+                /* Skipping garbage collection for now. I asked Vaibhav and he said that it's not required.
                 try{
-                    LogUtils.debug(LOG_TAG, "Waiting for write-lock to garbage collect log.");
+                    LogUtils.debug(LOG_TAG, "Waiting for write-lock for garbage collecting log.");
                     readWriteLock.writeLock().lock();
                     garbageCollectLog();
                 }
                 finally {
                     readWriteLock.writeLock().unlock();
                 }
+                */
             }
 
         }

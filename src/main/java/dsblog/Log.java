@@ -19,7 +19,7 @@ public class Log {
         LOG_TAG += "-" + serverID;
         LOG_FILE = Constants.LOG_FILE + "-" + serverID;
         try{
-            logWriter = new FileOutputStream(LOG_FILE, false); // Create a new file each time.
+            logWriter = new FileOutputStream(LOG_FILE, true); // Create a new file each time.
         }
         catch(IOException e){
             LogUtils.error(LOG_TAG, "Failed to initialize Log file.", e);

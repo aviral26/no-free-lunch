@@ -35,6 +35,8 @@ public class Config {
     }
 
     public static List<Address> getServerAddresses() {
+        if(PROPERTIES == null)
+            LogUtils.error(LOG_TAG, "Properties is null.");
         return PROPERTIES.getServers();
     }
 
@@ -44,5 +46,9 @@ public class Config {
 
     public static int getNumberOfServers() {
         return getServerAddresses().size();
+    }
+
+    public static Address getServerAddressById(int id){
+        return getServerAddresses().get(id);
     }
 }

@@ -19,7 +19,7 @@ public class Database {
         DB_FILE = Constants.DB_FILE + "-" + serverID;
         counter = 0;
         try{
-            dbWriter = new FileOutputStream(DB_FILE, false); // Create a new file whether it exists or not.
+            dbWriter = new FileOutputStream(DB_FILE, true); // Create a new file whether it exists or not.
         }
         catch(IOException e){
             LogUtils.error(LOG_TAG, "Failed to initialize DB file.", e);
