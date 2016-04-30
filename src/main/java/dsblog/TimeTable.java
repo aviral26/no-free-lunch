@@ -1,6 +1,7 @@
 package dsblog;
 
 import common.Constants;
+import utils.LogUtils;
 
 public class TimeTable {
 

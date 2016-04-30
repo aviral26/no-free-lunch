@@ -5,6 +5,7 @@ import dsblog.Config;
 import dsblog.Message;
 import dsblog.Server;
 import dsblog.StartServers;
+import utils.LogUtils;
 
 import java.io.*;
 import java.net.Socket;
@@ -16,9 +17,9 @@ import java.util.Scanner;
 public class ServerTest {
     public static void main(String[] args) throws Exception {
 
-        StartServers.startServers(new String[0]);
+       // StartServers.startServers(new String[0]);
         int zero = 0, one = 1;
-
+        Config.init();
         ObjectOutputStream objectOutputStream;
         ObjectInputStream objectInputStream;
         Socket socket;
@@ -96,7 +97,26 @@ public class ServerTest {
 
         System.out.println("Done initialising server " + one);
 
-        // Test sync.
+        // Test sync - sync server 1 with server 0.
+        socket = new Socket(address.getIp(), address.getClientPort());
+        objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+        objectOutputStream.writeObject(new Message(Message.Type.SYNC, String.valueOf(zero), Message.Sender.CLIENT, -1));
+        objectInputStream = new ObjectInputStream(socket.getInputStream());
+        reply = ((Message) objectInputStream.readObject()).getMessage();
+        System.out.println("Reply to SYNC from server: " + reply);
+        assert reply.equals(Constants.STATUS_OK);
 
+        // Check content of database and log files.
+        System.out.println("DB contents of server 1: ");
+        file_db = new byte[(int) new File(Constants.DB_FILE + "-" + one).length()];
+        dbFileReader.read(file_db);
+        System.out.println(new String(file_db));
+
+        System.out.println("Log contents of server 1: ");
+        file_log = new byte[(int) new File(Constants.LOG_FILE + "-" + one).length()];
+        logFileReader.read(file_log);
+        System.out.println(new String(file_log));
+
+        System.out.println("Done.");
     }
 }

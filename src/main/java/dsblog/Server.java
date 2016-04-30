@@ -173,7 +173,6 @@ public class Server {
     private void handleSyncMessage (Message message, ObjectInputStream
             objectInputStream, ObjectOutputStream
             objectOutputStream) throws UnidentifiedSyncMessageException, IOException {
-
         switch (message.getSender()) {
             case SERVER:
                 handleSyncMessageFromServer(message, objectInputStream, objectOutputStream);
@@ -191,16 +190,19 @@ public class Server {
             objectOutputStream) throws IOException {
 
         StringBuilder events_str = new StringBuilder("");
-
+        LogUtils.debug(LOG_TAG, "Received SYNC message from server " + message.getNode());
         // Determine which events to send to other server by examining each event in log, and send them.
         try {
             LogUtils.debug(LOG_TAG, "Acquiring read-lock...");
             readWriteLock.readLock().lock();
             List<Event> events = log.readLog();
+            int debug_counter = 0;
             for (Event e : events)
-                if (!timeTable.hasrec(e, message.getNode()))
+                if (!timeTable.hasrec(e, message.getNode())) {
                     events_str.append(e.toString() + Constants.LIST_DELIMITER);
-
+                    debug_counter++;
+                }
+            LogUtils.debug(LOG_TAG, "Number of events to SYNC: " + debug_counter);
             objectOutputStream.writeObject(new Message(Message.Type.SYNC, timeTable.toString() + Constants
                     .OBJECT_DELIMITER + events_str, Message.Sender.SERVER, id));
         }
@@ -273,12 +275,16 @@ public class Server {
         }
 
         // Update self TT, Database and Log atomically.
-        String[] response_str = response.getMessage().split(Constants.OBJECT_DELIMITER);
+        String resp = response.getMessage();
+        String[] response_str = resp.split(Constants.OBJECT_DELIMITER);
         try {
             LogUtils.debug(LOG_TAG, "Waiting for write-log to update log, database and timetable.");
             readWriteLock.writeLock().lock();
             timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
-            writeSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
+            if(response_str.length >1)
+                writeSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
+            else
+                LogUtils.debug(LOG_TAG, "No new events to add.");
         } finally {
             readWriteLock.writeLock().unlock();
             LogUtils.debug(LOG_TAG, "Write-lock released.");
@@ -308,7 +314,7 @@ public class Server {
 
         for(String event_str : events_str)
             events.add(Event.fromString(event_str));
-        return null;
+        return events;
     }
 
     private void garbageCollectLog(){

@@ -26,12 +26,12 @@ public class Config {
         try {
             PROPERTIES = Constants.UNIT_TESTING ? new Properties() : new Gson().fromJson(new FileReader("lucid.config"), Properties.class);
             NUMBER_OF_SERVERS = getNumberOfServers();
+            LogUtils.setLogLevel(getLogLevel());
             LogUtils.debug(LOG_TAG, "Config initialized.");
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to init", e);
         }
 
-        LogUtils.setLogLevel(getLogLevel());
     }
 
     public static List<Address> getServerAddresses() {
