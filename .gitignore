@@ -1,6 +1,5 @@
 *.iml
 *.idea
-target/
 no-free-lunch.pem
 no-free-lunch-2.pem
 no-free-lunch-3.pem

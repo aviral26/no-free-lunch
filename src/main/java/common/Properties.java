@@ -13,13 +13,14 @@ public class Properties {
     /**
      * This constructor is for tests only. Modify as required.
      */
-    public Properties(){
+    public Properties() {
         logLevel = LogUtils.LogLevel.DEBUG.getId();
         LogUtils.setLogLevel(logLevel);
         LogUtils.debug("Properties", "TEST MODE.");
         servers = new ArrayList<>();
-        for(int i = 0; i < 8; i += 2)
-            servers.add(new Address("127.0.0.1", 9000 + i, 9000 + i + 1));
+        servers.add(new Address("128.111.84.253", 9000, 9001));
+        servers.add(new Address("128.111.84.202", 9000, 9001));
+        servers.add(new Address("128.111.84.202", 9002, 9003));
     }
 
     public List<Address> getServers() {
