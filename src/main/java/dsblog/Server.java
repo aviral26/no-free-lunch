@@ -280,11 +280,11 @@ public class Server {
         try {
             LogUtils.debug(LOG_TAG, "Waiting for write-log to update log, database and timetable.");
             readWriteLock.writeLock().lock();
-            timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
             if(response_str.length >1)
                 writeSelfLogAndDatabase(listOfEventsFromString(response_str[1]));
             else
                 LogUtils.debug(LOG_TAG, "No new events to add.");
+            timeTable.updateSelf(TimeTable.fromString(response_str[0]), id, response.getNode());
         } finally {
             readWriteLock.writeLock().unlock();
             LogUtils.debug(LOG_TAG, "Write-lock released.");
@@ -298,9 +298,14 @@ public class Server {
     }
 
     private void writeSelfLogAndDatabase(List<Event> events) throws IOException{
-        // Append all events to log and insert in database.
-        for(Event e : events)
-            writeSelfLogAndDatabase(e);
+        // Append new events to log and insert in database.
+        for(Event e : events) {
+            LogUtils.debug(LOG_TAG, "Considering event : " + e);
+            if(!timeTable.hasrec(e, id)) {
+                LogUtils.debug(LOG_TAG, "Adding this one.");
+                writeSelfLogAndDatabase(e);
+            }
+        }
     }
 
     private void writeSelfLogAndDatabase(Event e) throws IOException{
