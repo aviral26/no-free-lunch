@@ -34,5 +34,5 @@ public class Constants {
     /**
      * Unit testing switch. Set to false when deploying.
      */
-    public static final boolean UNIT_TESTING = true;
+    public static final boolean UNIT_TESTING = false;
 }
