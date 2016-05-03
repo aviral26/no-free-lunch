@@ -2,6 +2,7 @@ package dsblog;
 
 import common.Address;
 import common.Constants;
+import utils.CommonUtils;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -54,6 +55,10 @@ public class Client {
 
         ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
         String reply = ((Message) objectInputStream.readObject()).getMessage();
+
+        CommonUtils.closeQuietly(objectOutputStream);
+        CommonUtils.closeQuietly(objectInputStream);
+        CommonUtils.closeQuietly(socket);
         System.out.println("Response: " + reply);
     }
 
@@ -68,6 +73,9 @@ public class Client {
         ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
         String response = ((Message) objectInputStream.readObject()).getMessage();
 
+        CommonUtils.closeQuietly(objectOutputStream);
+        CommonUtils.closeQuietly(objectInputStream);
+        CommonUtils.closeQuietly(socket);
         return response.split(Constants.OBJECT_DELIMITER);
     }
 
@@ -82,6 +90,10 @@ public class Client {
 
         ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
         String response = ((Message) objectInputStream.readObject()).getMessage();
+
+        CommonUtils.closeQuietly(objectOutputStream);
+        CommonUtils.closeQuietly(objectInputStream);
+        CommonUtils.closeQuietly(socket);
         System.out.println("Response: " + response);
     }
 }
