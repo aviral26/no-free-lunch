@@ -162,7 +162,7 @@ public class Server {
         try {
             LogUtils.debug(LOG_TAG, "Waiting to acquire read lock...");
             readWriteLock.readLock().lock();
-            objectOutputStream.writeObject(new Message(Message.Type.LOOKUP, "All posts:\n" + database.lookUp(), Message.Sender.SERVER, id));
+            objectOutputStream.writeObject(new Message(Message.Type.LOOKUP, database.lookUp(), Message.Sender.SERVER, id));
         }
         finally {
             readWriteLock.readLock().unlock();

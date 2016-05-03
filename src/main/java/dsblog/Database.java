@@ -28,7 +28,9 @@ public class Database {
     }
 
     public void insert(String blogPost) throws IOException {
-        dbWriter.write(("Post number " + ++counter + ". " + blogPost + Constants.OBJECT_DELIMITER).getBytes());
+        //dbWriter.write(("Post number " + ++counter + ". " + blogPost + Constants.OBJECT_DELIMITER).getBytes());
+        dbWriter.write((blogPost + Constants.OBJECT_DELIMITER).getBytes());
+
         LogUtils.debug(LOG_TAG, "Written new post to file. Counter = " + counter);
     }
 
