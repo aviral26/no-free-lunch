@@ -49,6 +49,7 @@ public class Event {
     public static Event fromString(String str){
         Event e;
         try{
+            LogUtils.debug(LOG_TAG, "str = " + str);
             String[] map = str.split("\n");
             e = new Event();
             e.setNode(Integer.parseInt(map[0].split(":")[1]));
@@ -57,7 +58,7 @@ public class Event {
             return e;
         }
         catch(Exception ex){
-            LogUtils.error(LOG_TAG, "Something went wrong while translating String to Event.", ex);
+            LogUtils.error(LOG_TAG, "Something went wrong while translating String to Event. str = " + str, ex);
             return null;
         }
     }

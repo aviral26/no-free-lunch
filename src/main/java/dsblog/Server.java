@@ -172,7 +172,7 @@ public class Server {
 
     private void handleSyncMessage (Message message, ObjectInputStream
             objectInputStream, ObjectOutputStream
-            objectOutputStream) throws UnidentifiedSyncMessageException, IOException {
+            objectOutputStream) throws Exception {
         switch (message.getSender()) {
             case SERVER:
                 handleSyncMessageFromServer(message, objectInputStream, objectOutputStream);
@@ -187,10 +187,15 @@ public class Server {
     }
 
     private void handleSyncMessageFromServer(Message message, ObjectInputStream objectInputStream, ObjectOutputStream
-            objectOutputStream) throws IOException {
+            objectOutputStream) throws Exception {
 
         StringBuilder events_str = new StringBuilder("");
         LogUtils.debug(LOG_TAG, "Received SYNC message from server " + message.getNode());
+        if(message.getMessage().equals(Constants.STATUS_FAIL)){
+            LogUtils.debug(LOG_TAG, "Failed to sync with server " + message.getNode());
+            throw new Exception();
+        }
+
         // Determine which events to send to other server by examining each event in log, and send them.
         try {
             LogUtils.debug(LOG_TAG, "Acquiring read-lock...");
