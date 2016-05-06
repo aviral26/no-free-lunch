@@ -18,9 +18,9 @@ public class Properties {
         LogUtils.setLogLevel(logLevel);
         LogUtils.debug("Properties", "TEST MODE.");
         servers = new ArrayList<>();
-        servers.add(new Address("128.111.84.253", 9000, 9001));
-        servers.add(new Address("128.111.84.202", 9000, 9001));
-        servers.add(new Address("128.111.84.202", 9002, 9003));
+        servers.add(new Address("127.0.0.1", 9000, 9001));
+        servers.add(new Address("127.0.0.1", 9002, 9003));
+        servers.add(new Address("127.0.0.1", 9004, 9005));
     }
 
     public List<Address> getServers() {
