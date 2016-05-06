@@ -1,4 +1,4 @@
-# no-free-lunch
+# Wuu-Bernstein
 
 An implementation of Wuu and Bernstein's solution to log replication[1].
 
