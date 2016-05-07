@@ -1,7 +1,5 @@
 package rocky.raft.client;
 
-import rocky.raft.dto.Message;
-
 import java.util.List;
 
 public interface Client {
@@ -10,7 +8,7 @@ public interface Client {
 
     void disconnect();
 
-    List<Message> lookup();
+    List<String> lookup();
 
-    void post(Message message);
+    void post(String message);
 }
