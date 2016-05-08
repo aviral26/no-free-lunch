@@ -21,6 +21,8 @@ public class RaftServer implements Server {
 
     private Address address;
 
+    private Address leaderAddress;
+
     private Log log;
 
     private Store store;
@@ -39,11 +41,12 @@ public class RaftServer implements Server {
         this.store = null; // TODO
         this.commitIndex = 0;
         updateState(ServerState.INACTIVE);
+        this.leaderAddress = null;
     }
 
     @Override
     public void start() {
-        LogUtils.debug(LOG_TAG, "Starting server " + address);
+        LogUtils.debug(LOG_TAG, "Starting server " + address + " in FOLLOWER state.");
         updateState(ServerState.FOLLOWER);
         listenClients();
         listenServers();
@@ -55,10 +58,10 @@ public class RaftServer implements Server {
         this.state = state;
         switch (state) {
             case INACTIVE:
-                serverLogic = new InactiveLogic();
+                serverLogic = new InactiveLogic(id);
                 break;
             case FOLLOWER:
-                serverLogic = new FollowerLogic();
+                serverLogic = new FollowerLogic(id);
                 break;
             default:
         }
@@ -88,9 +91,10 @@ public class RaftServer implements Server {
                 LogUtils.debug(LOG_TAG, "Handling client");
                 ois = Utils.getOis(socket);
                 Message message = (Message) ois.readObject();
-                LogUtils.debug(LOG_TAG, "Got message from client " + message);
+                LogUtils.debug(LOG_TAG, "Received message from client " + message);
 
-                Message reply = processClientMessage(message);
+                // A message from a client cannot cause the server to change state, so invoke ServerLogic directly.
+                Message reply = serverLogic.process(message);
 
                 oos = Utils.writeAndFlush(socket, reply);
             } catch (Exception e) {
@@ -144,18 +148,10 @@ public class RaftServer implements Server {
         Utils.startThread("handle-server", runnable);
     }
 
-    private Message processClientMessage(Message message) throws Exception {
-        switch (message.getMessageType()) {
-            case GET_LEADER_ADDR:
-                Message msg = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
-                msg.setMessage(new Gson().toJson(Config.SERVERS.get(0)));
-                return msg;
-        }
-        return null;
-    }
-
     private Message processServerMessage(Message message) throws Exception {
         // TODO
+        // if message is going to cause a state change, handle it here;
+        // otherwise invoke ServerLogic.
         return null;
     }
 }

@@ -9,7 +9,13 @@ public class LeaderLogic implements ServerLogic {
 
     private int[] matchIndex;
 
-    public LeaderLogic(int serverCount, Log log) {
+    private int id;
+    private static String LOG_TAG = "LeaderLogic-";
+
+    public LeaderLogic(int serverCount, Log log, int id) {
+        this.id = id;
+        LOG_TAG += this.id;
+
         nextIndex = new int[serverCount];
         matchIndex = new int[serverCount];
 
