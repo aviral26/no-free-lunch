@@ -1,14 +1,14 @@
 package rocky.raft.client;
 
+import rocky.raft.dto.Address;
+
 import java.util.List;
 
 public interface Client {
 
-    void connect();
+    List<String> lookup() throws Exception;
 
-    void disconnect();
+    List<String> lookup(Address address) throws Exception;
 
-    List<String> lookup();
-
-    void post(String message);
+    void post(String message) throws Exception;
 }

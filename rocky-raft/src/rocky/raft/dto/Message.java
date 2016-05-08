@@ -6,7 +6,9 @@ public class Message implements Serializable {
 
     public enum Type {
         GET_LEADER_ADDR,
-        LEADER_ADDR
+        LEADER_ADDR,
+        DO_POST,
+        GET_POSTS
     }
 
     public enum Sender {
@@ -14,9 +16,16 @@ public class Message implements Serializable {
         CLIENT
     }
 
+    public enum Status {
+        OK,
+        FAIL
+    }
+
     private Type messageType;
 
     private Sender sender;
+
+    private Status status;
 
     private String message;
 
@@ -41,6 +50,14 @@ public class Message implements Serializable {
         this.sender = sender;
     }
 
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
     public String getMessage() {
         return message;
     }
@@ -54,6 +71,7 @@ public class Message implements Serializable {
         return "Message{" +
                 "messageType=" + messageType +
                 ", sender=" + sender +
+                ", status=" + status +
                 ", message='" + message + '\'' +
                 '}';
     }
