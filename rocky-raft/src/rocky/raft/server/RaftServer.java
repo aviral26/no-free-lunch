@@ -17,17 +17,7 @@ public class RaftServer implements Server {
 
     private String LOG_TAG = "RAFT_SERVER-";
 
-    private int id;
-
-    private Address address;
-
-    private Address leaderAddress;
-
-    private Log log;
-
-    private Store store;
-
-    private int commitIndex;
+    private ServerContext serverContext;
 
     private ServerState state;
 
@@ -35,18 +25,19 @@ public class RaftServer implements Server {
 
     public RaftServer(int id) {
         LOG_TAG += id;
-        this.id = id;
-        this.address = Config.SERVERS.get(id);
-        this.log = null; // TODO
-        this.store = null; // TODO
-        this.commitIndex = 0;
+        serverContext = new ServerContext();
+        serverContext.setId(id);
+        serverContext.setAddress(Config.SERVERS.get(id));
+        serverContext.setLog(null); // TODO
+        serverContext.setStore(null); // TODO
+        serverContext.setCommitIndex(0);
         updateState(ServerState.INACTIVE);
-        this.leaderAddress = null;
+        serverContext.setLeaderAddress(null); // Will be set after election.
     }
 
     @Override
     public void start() {
-        LogUtils.debug(LOG_TAG, "Starting server " + address + " in FOLLOWER state.");
+        LogUtils.debug(LOG_TAG, "Starting server " + serverContext.getAddress() + " in FOLLOWER state.");
         updateState(ServerState.FOLLOWER);
         listenClients();
         listenServers();
@@ -58,10 +49,10 @@ public class RaftServer implements Server {
         this.state = state;
         switch (state) {
             case INACTIVE:
-                serverLogic = new InactiveLogic(id);
+                serverLogic = new InactiveLogic(serverContext);
                 break;
             case FOLLOWER:
-                serverLogic = new FollowerLogic(id);
+                serverLogic = new FollowerLogic(serverContext);
                 break;
             default:
         }
@@ -70,7 +61,7 @@ public class RaftServer implements Server {
     private void listenClients() {
         Runnable runnable = () -> {
             try {
-                ServerSocket ss = new ServerSocket(address.getClientPort());
+                ServerSocket ss = new ServerSocket(serverContext.getAddress().getClientPort());
                 while (true) {
                     handleClient(ss.accept());
                 }
@@ -98,7 +89,8 @@ public class RaftServer implements Server {
 
                 oos = Utils.writeAndFlush(socket, reply);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went wrong while handling client", e);
+                LogUtils.error(LOG_TAG, "Something went wrong while handling client. Client not notified of failure.",
+                        e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);
@@ -112,7 +104,7 @@ public class RaftServer implements Server {
     private void listenServers() {
         Runnable runnable = () -> {
             try {
-                ServerSocket ss = new ServerSocket(address.getServerPort());
+                ServerSocket ss = new ServerSocket(serverContext.getLeaderAddress().getServerPort());
                 while (true) {
                     handleServer(ss.accept());
                 }

@@ -1,16 +1,17 @@
 package rocky.raft.server;
 
+import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
 public class InactiveLogic implements ServerLogic {
 
-    private int id;
     private static String LOG_TAG = "InactiveLogic-";
+    private ServerContext serverContext;
 
-    InactiveLogic(int id){
-        this.id = id;
-        LOG_TAG += this.id;
+    InactiveLogic(ServerContext serverContext){
+        this.serverContext = serverContext;
+        LOG_TAG += this.serverContext.getId();
     }
 
     @Override

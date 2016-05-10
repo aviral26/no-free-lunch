@@ -1,22 +1,24 @@
 package rocky.raft.server;
 
+import com.google.gson.Gson;
+import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
 public class FollowerLogic implements ServerLogic {
 
-    private int id;
     private static String LOG_TAG = "FollowerLogic-";
+    private ServerContext serverContext;
 
-    FollowerLogic(int id){
-        this.id = id;
-        LOG_TAG += this.id;
+    FollowerLogic(ServerContext serverContext){
+        LOG_TAG += serverContext.getId();
+        this.serverContext = serverContext;
     }
 
     @Override
     public Message process(Message message) {
         switch(message.getSender()){
-            case CLIENT: return handleClient(message);
+            case CLIENT: return handleClient(message, serverContext.getLeaderAddress(), serverContext.getLog());
 
             case SERVER: return handleServer(message);
 
@@ -26,12 +28,23 @@ public class FollowerLogic implements ServerLogic {
         return null;
     }
 
-    private Message handleClient(Message message) {
+    private Message handleClient(Message message, Address leader, Log log) {
+        Message reply;
+
         switch (message.getMessageType()){
+
             case GET_LEADER_ADDR:
-                // TODO
+                reply = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
+                reply.setStatus(Message.Status.OK);
+                reply.setMessage(new Gson().toJson(leader));
+                return reply;
+
             case GET_POSTS:
-                // TODO
+                reply = new Message(Message.Sender.SERVER, Message.Type.POSTS);
+                reply.setStatus(Message.Status.OK);
+                reply.setMessage(new Gson().toJson(log.lookup()));
+                return reply;
+
             default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
         }
         return null;

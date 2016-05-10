@@ -6,11 +6,11 @@ import rocky.raft.utils.LogUtils;
 public class CandidateLogic implements ServerLogic {
 
     private String LOG_TAG = "CandidateLogic-";
-    private int id;
+    private ServerContext serverContext;
 
-    CandidateLogic(int serverId){
-        this.id = serverId;
-        LOG_TAG += this.id;
+    CandidateLogic(ServerContext serverContext){
+        this.serverContext = serverContext;
+        LOG_TAG += this.serverContext;
     }
 
     @Override
@@ -21,7 +21,7 @@ public class CandidateLogic implements ServerLogic {
             case SERVER: return handleServer(message);
 
             default:
-                LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null.");
+                LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null. ");
         }
         return null;
     }
@@ -32,7 +32,7 @@ public class CandidateLogic implements ServerLogic {
                 // TODO
             case GET_POSTS:
                 // TODO
-            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
+            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null.");
         }
         return null;
     }
