@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
@@ -14,14 +15,14 @@ public class CandidateLogic implements ServerLogic {
     }
 
     @Override
-    public Message process(Message message) {
+    public Message process(Message message, ServerContext serverContext) {
         switch (message.getSender()){
             case CLIENT: return handleClient(message);
 
             case SERVER: return handleServer(message);
 
             default:
-                LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null.");
+                LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null. ");
         }
         return null;
     }
@@ -32,7 +33,7 @@ public class CandidateLogic implements ServerLogic {
                 // TODO
             case GET_POSTS:
                 // TODO
-            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
+            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null.");
         }
         return null;
     }

@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import rocky.raft.dto.Address;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 
@@ -27,7 +28,7 @@ public class LeaderLogic implements ServerLogic {
     }
 
     @Override
-    public Message process(Message message) {
+    public Message process(Message message, ServerContext serverContext) {
         return null;
     }
 }

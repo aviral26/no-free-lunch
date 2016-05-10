@@ -9,10 +9,12 @@ public class Message implements Serializable {
         LEADER_ADDR,
         DO_POST,
         GET_POSTS,
+        POSTS,
         APPEND_ENTRIES_RPC,
         REQUEST_VOTE_RPC,
         APPEND_ENTRIES_RPC_REPLY,
-        REQUEST_VOTE_RPC_REPLY
+        REQUEST_VOTE_RPC_REPLY,
+        ERROR
     }
 
     public enum Sender {
