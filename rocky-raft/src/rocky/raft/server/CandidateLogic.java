@@ -1,21 +1,20 @@
 package rocky.raft.server;
 
-import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
 public class CandidateLogic implements ServerLogic {
 
     private String LOG_TAG = "CandidateLogic-";
-    private int id;
+    private ServerContext serverContext;
 
-    CandidateLogic(int serverId){
-        this.id = serverId;
-        LOG_TAG += this.id;
+    CandidateLogic(ServerContext serverContext){
+        this.serverContext = serverContext;
+        LOG_TAG += this.serverContext;
     }
 
     @Override
-    public Message process(Message message, ServerContext serverContext) {
+    public Message process(Message message) {
         switch (message.getSender()){
             case CLIENT: return handleClient(message);
 

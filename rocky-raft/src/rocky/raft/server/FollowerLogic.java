@@ -7,16 +7,16 @@ import rocky.raft.utils.LogUtils;
 
 public class FollowerLogic implements ServerLogic {
 
-    private int id;
     private static String LOG_TAG = "FollowerLogic-";
+    private ServerContext serverContext;
 
-    FollowerLogic(int id){
-        this.id = id;
-        LOG_TAG += this.id;
+    FollowerLogic(ServerContext serverContext){
+        LOG_TAG += serverContext.getId();
+        this.serverContext = serverContext;
     }
 
     @Override
-    public Message process(Message message, ServerContext serverContext) {
+    public Message process(Message message) {
         switch(message.getSender()){
             case CLIENT: return handleClient(message, serverContext.getLeaderAddress(), serverContext.getLog());
 

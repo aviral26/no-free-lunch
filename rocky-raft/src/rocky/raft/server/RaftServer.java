@@ -49,10 +49,10 @@ public class RaftServer implements Server {
         this.state = state;
         switch (state) {
             case INACTIVE:
-                serverLogic = new InactiveLogic(serverContext.getId());
+                serverLogic = new InactiveLogic(serverContext);
                 break;
             case FOLLOWER:
-                serverLogic = new FollowerLogic(serverContext.getId());
+                serverLogic = new FollowerLogic(serverContext);
                 break;
             default:
         }
@@ -85,7 +85,7 @@ public class RaftServer implements Server {
                 LogUtils.debug(LOG_TAG, "Received message from client " + message);
 
                 // A message from a client cannot cause the server to change state, so invoke ServerLogic directly.
-                Message reply = serverLogic.process(message, serverContext);
+                Message reply = serverLogic.process(message);
 
                 oos = Utils.writeAndFlush(socket, reply);
             } catch (Exception e) {
