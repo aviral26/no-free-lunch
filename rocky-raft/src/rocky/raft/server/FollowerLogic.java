@@ -1,6 +1,7 @@
 package rocky.raft.server;
 
 import com.google.gson.Gson;
+import rocky.raft.log.Log;
 import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;

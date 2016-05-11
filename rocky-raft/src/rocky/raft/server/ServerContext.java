@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import rocky.raft.log.Log;
 import rocky.raft.dto.Address;
 
 public class ServerContext {

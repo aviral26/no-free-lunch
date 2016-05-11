@@ -1,6 +1,5 @@
 package rocky.raft.server;
 
-import rocky.raft.dto.Address;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 
@@ -20,7 +19,7 @@ public class LeaderLogic implements ServerLogic {
         nextIndex = new int[serverCount];
         matchIndex = new int[serverCount];
 
-        LogEntry entry = serverContext.getLog().peek();
+        LogEntry entry = serverContext.getLog().last();
         for (int i = 0; i < serverCount; ++i) {
             nextIndex[i] = entry.getIndex() + 1;
             matchIndex[i] = 0;
