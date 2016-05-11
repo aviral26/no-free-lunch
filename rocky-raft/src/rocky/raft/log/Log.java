@@ -11,6 +11,8 @@ public interface Log {
 
     void append(LogEntry entry, int index, int term) throws IOException;
 
+    void resize(int size) throws IOException;
+
     LogEntry last() throws IOException;
 
     LogEntry get(int index) throws IOException;
