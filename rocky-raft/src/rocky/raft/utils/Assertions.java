@@ -1,4 +1,4 @@
-package rocky.raft.common;
+package rocky.raft.utils;
 
 public class Assertions {
 

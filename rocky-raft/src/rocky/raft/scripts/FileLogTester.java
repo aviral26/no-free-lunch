@@ -1,6 +1,6 @@
 package rocky.raft.scripts;
 
-import rocky.raft.common.Assertions;
+import rocky.raft.utils.Assertions;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.log.FileLog;
 import rocky.raft.utils.LogUtils;
