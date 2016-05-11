@@ -1,6 +1,5 @@
 package rocky.raft.server;
 
-import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 

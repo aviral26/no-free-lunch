@@ -3,6 +3,7 @@ package rocky.raft.server;
 import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
+import rocky.raft.common.TimeoutListener;
 import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
@@ -31,6 +32,7 @@ public class RaftServer implements Server {
         serverContext.setLog(null); // TODO
         serverContext.setStore(null); // TODO
         serverContext.setCommitIndex(0);
+        serverContext.setVotedFor(-1);
         updateState(ServerState.INACTIVE);
         serverContext.setLeaderAddress(null); // Will be set after election.
     }
@@ -52,9 +54,9 @@ public class RaftServer implements Server {
                 serverLogic = new InactiveLogic(serverContext);
                 break;
             case FOLLOWER:
-                serverLogic = new FollowerLogic(serverContext);
+                serverLogic = new FollowerLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
-            default:
+            default: LogUtils.debug(LOG_TAG, "Unknown state.");
         }
     }
 
@@ -146,4 +148,5 @@ public class RaftServer implements Server {
         // otherwise invoke ServerLogic.
         return null;
     }
+
 }

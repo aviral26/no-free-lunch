@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import rocky.raft.common.TimeoutListener;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
@@ -7,10 +8,12 @@ public class CandidateLogic implements ServerLogic {
 
     private String LOG_TAG = "CandidateLogic-";
     private ServerContext serverContext;
+    private TimeoutListener timeoutListener;
 
-    CandidateLogic(ServerContext serverContext){
+    CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener){
         this.serverContext = serverContext;
         LOG_TAG += this.serverContext;
+        this.timeoutListener = timeoutListener;
     }
 
     @Override

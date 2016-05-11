@@ -11,6 +11,8 @@ public class ServerContext {
 
     private Address leaderAddress;
 
+    private int votedFor;
+
     private Log log;
 
     private Store store;
@@ -19,6 +21,14 @@ public class ServerContext {
 
     public int getId() {
         return id;
+    }
+
+    public int getVotedFor() {
+        return votedFor;
+    }
+
+    public void setVotedFor(int votedFor) {
+        this.votedFor = votedFor;
     }
 
     public void setId(int id) {
