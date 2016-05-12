@@ -6,7 +6,7 @@ import rocky.raft.server.Server;
 
 public class StartServers {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         for (int i = 0; i < Config.SERVERS.size(); ++i) {
             Server server = new RaftServer(i);

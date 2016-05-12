@@ -31,6 +31,11 @@ public class CandidateLogic implements ServerLogic {
         return null;
     }
 
+    @Override
+    public void release() {
+
+    }
+
     private Message handleClient(Message message) {
         switch (message.getMessageType()) {
             case GET_LEADER_ADDR:

@@ -18,4 +18,9 @@ public class InactiveLogic implements ServerLogic {
         LogUtils.debug(LOG_TAG, "Cannot process message in inactive state. Returning null.");
         return null;
     }
+
+    @Override
+    public void release() {
+        // Do nothing
+    }
 }

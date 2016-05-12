@@ -5,4 +5,6 @@ import rocky.raft.dto.Message;
 public interface ServerLogic {
 
     Message process(Message message);
+
+    void release();
 }

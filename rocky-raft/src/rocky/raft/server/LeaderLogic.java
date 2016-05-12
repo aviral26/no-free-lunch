@@ -32,4 +32,9 @@ public class LeaderLogic implements ServerLogic {
     public Message process(Message message) {
         return null;
     }
+
+    @Override
+    public void release() {
+
+    }
 }

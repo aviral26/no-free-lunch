@@ -39,6 +39,11 @@ public class FollowerLogic implements ServerLogic {
         return null;
     }
 
+    @Override
+    public void release() {
+        TimeoutManager.getInstance().remove(LOG_TAG);
+    }
+
     private Message handleClient(Message message, Address leader, Log log) throws Exception {
         Message reply;
 
