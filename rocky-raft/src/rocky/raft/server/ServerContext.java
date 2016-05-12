@@ -16,7 +16,7 @@ public class ServerContext {
 
     private Log log;
 
-    private Store store;
+    private Store<String, Integer> store;
 
     private int commitIndex;
 
@@ -60,11 +60,11 @@ public class ServerContext {
         this.log = log;
     }
 
-    public Store getStore() {
+    public Store<String, Integer> getStore() {
         return store;
     }
 
-    public void setStore(Store store) {
+    public void setStore(Store<String, Integer> store) {
         this.store = store;
     }
 
