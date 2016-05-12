@@ -3,6 +3,8 @@ package rocky.raft.server;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 
+import java.io.IOException;
+
 public class LeaderLogic implements ServerLogic {
 
     private int[] nextIndex;
@@ -12,7 +14,7 @@ public class LeaderLogic implements ServerLogic {
     private ServerContext serverContext;
     private static String LOG_TAG = "LeaderLogic-";
 
-    public LeaderLogic(int serverCount, ServerContext serverContext) {
+    public LeaderLogic(int serverCount, ServerContext serverContext) throws IOException {
         this.serverContext = serverContext;
         LOG_TAG += this.serverContext.getId();
 

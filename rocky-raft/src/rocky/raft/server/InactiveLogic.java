@@ -8,7 +8,7 @@ public class InactiveLogic implements ServerLogic {
     private static String LOG_TAG = "InactiveLogic-";
     private ServerContext serverContext;
 
-    InactiveLogic(ServerContext serverContext){
+    InactiveLogic(ServerContext serverContext) {
         this.serverContext = serverContext;
         LOG_TAG += this.serverContext.getId();
     }

@@ -1,10 +1,7 @@
 package rocky.raft.server;
 
-import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
-import rocky.raft.common.TimeoutListener;
-import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
@@ -56,7 +53,8 @@ public class RaftServer implements Server {
             case FOLLOWER:
                 serverLogic = new FollowerLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
-            default: LogUtils.debug(LOG_TAG, "Unknown state.");
+            default:
+                LogUtils.debug(LOG_TAG, "Unknown state.");
         }
     }
 

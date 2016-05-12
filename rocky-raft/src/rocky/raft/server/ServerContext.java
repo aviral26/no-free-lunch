@@ -1,7 +1,7 @@
 package rocky.raft.server;
 
-import rocky.raft.log.Log;
 import rocky.raft.dto.Address;
+import rocky.raft.log.Log;
 
 public class ServerContext {
 

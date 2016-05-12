@@ -10,7 +10,7 @@ public class CandidateLogic implements ServerLogic {
     private ServerContext serverContext;
     private TimeoutListener timeoutListener;
 
-    CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener){
+    CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
         this.serverContext = serverContext;
         LOG_TAG += this.serverContext;
         this.timeoutListener = timeoutListener;
@@ -18,10 +18,12 @@ public class CandidateLogic implements ServerLogic {
 
     @Override
     public Message process(Message message) {
-        switch (message.getSender()){
-            case CLIENT: return handleClient(message);
+        switch (message.getSender()) {
+            case CLIENT:
+                return handleClient(message);
 
-            case SERVER: return handleServer(message);
+            case SERVER:
+                return handleServer(message);
 
             default:
                 LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null. ");
@@ -30,25 +32,27 @@ public class CandidateLogic implements ServerLogic {
     }
 
     private Message handleClient(Message message) {
-        switch (message.getMessageType()){
+        switch (message.getMessageType()) {
             case GET_LEADER_ADDR:
                 // TODO
             case GET_POSTS:
                 // TODO
-            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null.");
+            default:
+                LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null.");
         }
         return null;
     }
 
     private Message handleServer(Message message) {
-        switch (message.getMessageType()){
+        switch (message.getMessageType()) {
             case APPEND_ENTRIES_RPC:
                 // TODO
             case REQUEST_VOTE_RPC:
                 // TODO
             case REQUEST_VOTE_RPC_REPLY:
                 // TODO
-            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
+            default:
+                LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
         }
         return null;
     }
