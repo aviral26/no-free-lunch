@@ -21,6 +21,11 @@ public class FollowerLogic implements ServerLogic {
     }
 
     @Override
+    public void release() {
+        // TODO
+    }
+
+    @Override
     public Message process(Message message) {
         try{
             switch(message.getSender()){

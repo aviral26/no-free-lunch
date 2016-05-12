@@ -18,6 +18,11 @@ public class CandidateLogic implements ServerLogic {
     }
 
     @Override
+    public void release() {
+        // TODO
+    }
+
+    @Override
     public Message process(Message message) {
         switch (message.getSender()){
             case CLIENT: return handleClient(message);
