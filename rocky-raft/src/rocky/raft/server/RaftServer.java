@@ -63,8 +63,11 @@ public class RaftServer implements Server {
             case FOLLOWER:
                 serverLogic = new FollowerLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
+            case CANDIDATE:
+                serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
+                break;
             default:
-                LogUtils.debug(LOG_TAG, "Unknown state.");
+                LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
         }
     }
 
