@@ -2,6 +2,7 @@ package rocky.raft.server;
 
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
+import rocky.raft.utils.LogUtils;
 
 import java.io.IOException;
 
@@ -21,10 +22,16 @@ public class LeaderLogic implements ServerLogic {
         nextIndex = new int[serverCount];
         matchIndex = new int[serverCount];
 
-        LogEntry entry = serverContext.getLog().last();
-        for (int i = 0; i < serverCount; ++i) {
-            nextIndex[i] = entry.getIndex() + 1;
-            matchIndex[i] = 0;
+        try {
+            LogEntry entry = serverContext.getLog().last();
+
+            for (int i = 0; i < serverCount; ++i) {
+                nextIndex[i] = entry.getIndex() + 1;
+                matchIndex[i] = 0;
+            }
+        }
+        catch(Exception e){
+            LogUtils.error(LOG_TAG, "Could not read log. This will cause errors.");
         }
     }
 

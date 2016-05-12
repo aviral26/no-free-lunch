@@ -1,14 +1,14 @@
 package rocky.raft.server;
 
+import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
+import rocky.raft.common.TimeoutListener;
+import rocky.raft.dto.Address;
 import rocky.raft.dto.Message;
-import rocky.raft.log.CachedFileLog;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
@@ -18,20 +18,18 @@ public class RaftServer implements Server {
 
     private String LOG_TAG = "RAFT_SERVER-";
 
-    private String LOG_FILE = "raft-log-";
-
     private ServerContext serverContext;
 
     private ServerState state;
 
     private ServerLogic serverLogic;
 
-    public RaftServer(int id) throws IOException {
+    public RaftServer(int id) {
         LOG_TAG += id;
         serverContext = new ServerContext();
         serverContext.setId(id);
         serverContext.setAddress(Config.SERVERS.get(id));
-        serverContext.setLog(new CachedFileLog(new File(LOG_FILE + id)));
+        serverContext.setLog(null); // TODO
         serverContext.setStore(null); // TODO
         serverContext.setCommitIndex(0);
         serverContext.setVotedFor(-1);
@@ -48,8 +46,6 @@ public class RaftServer implements Server {
     }
 
     private void updateState(ServerState state) {
-        serverLogic.release();
-
         LogUtils.debug(LOG_TAG, "Updating server state to " + state.name());
 
         this.state = state;
@@ -60,8 +56,10 @@ public class RaftServer implements Server {
             case FOLLOWER:
                 serverLogic = new FollowerLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
-            default:
-                LogUtils.debug(LOG_TAG, "Unknown state.");
+            case CANDIDATE:
+                serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
+                break;
+            default: LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
         }
     }
 
@@ -111,7 +109,7 @@ public class RaftServer implements Server {
     private void listenServers() {
         Runnable runnable = () -> {
             try {
-                ServerSocket ss = new ServerSocket(serverContext.getAddress().getServerPort());
+                ServerSocket ss = new ServerSocket(serverContext.getLeaderAddress().getServerPort());
                 while (true) {
                     handleServer(ss.accept());
                 }

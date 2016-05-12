@@ -14,7 +14,7 @@ public class FollowerLogic implements ServerLogic {
     private ServerContext serverContext;
     private TimeoutListener timeoutListener;
 
-    FollowerLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
+    FollowerLogic(ServerContext serverContext, TimeoutListener timeoutListener){
         LOG_TAG += serverContext.getId();
         this.serverContext = serverContext;
         this.timeoutListener = timeoutListener;
@@ -22,32 +22,26 @@ public class FollowerLogic implements ServerLogic {
 
     @Override
     public Message process(Message message) {
-        try {
-            switch (message.getSender()) {
-                case CLIENT:
-                    return handleClient(message, serverContext.getLeaderAddress(), serverContext.getLog());
+        try{
+            switch(message.getSender()){
+                case CLIENT: return handleClient(message, serverContext.getLeaderAddress(), serverContext.getLog());
 
-                case SERVER:
-                    return handleServer(message);
+                case SERVER: return handleServer(message);
 
                 default:
                     LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null.");
             }
-        } catch (Exception e) {
+        }
+        catch(Exception e){
             LogUtils.error(LOG_TAG, "Something went wrong while processing message. Returning null.", e);
         }
         return null;
     }
 
-    @Override
-    public void release() {
-        TimeoutManager.getInstance().remove(LOG_TAG);
-    }
-
-    private Message handleClient(Message message, Address leader, Log log) throws Exception {
+    private Message handleClient(Message message, Address leader, Log log) throws Exception{
         Message reply;
 
-        switch (message.getMessageType()) {
+        switch (message.getMessageType()){
 
             case GET_LEADER_ADDR:
                 reply = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
@@ -61,8 +55,7 @@ public class FollowerLogic implements ServerLogic {
                 reply.setMessage(new Gson().toJson(log.getAll()));
                 return reply;
 
-            default:
-                LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
+            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
         }
         return null;
     }
@@ -72,23 +65,27 @@ public class FollowerLogic implements ServerLogic {
         Log log = serverContext.getLog();
         int term = log.last().getTerm();
 
-        switch (message.getMessageType()) {
+        switch (message.getMessageType()){
 
             // Assumes entries are in chronological order.
             case APPEND_ENTRIES_RPC:
 
                 // Heartbeat received. Reset time out thread.
-                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Constants.TIMEOUT);
+                TimeoutManager.getInstance().add(LOG_TAG, new TimeOut(serverContext, timeoutListener), Constants
+                        .TIMEOUT);
 
                 AppendEntriesRpc appendEntriesRpc = new Gson().fromJson(message.getMessage(), AppendEntriesRpc.class);
                 AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
 
-                if ((term > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
+                if((term > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm
+                    ())){
                     appendEntriesRpcReply.setSuccess(false);
                     appendEntriesRpcReply.setTerm(term);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
-                } else {
+                }
+
+                else {
                     for (LogEntry entry : appendEntriesRpc.getEntries()) {
                         if (log.get(entry.getIndex()) == null)
                             log.append(entry);
@@ -119,20 +116,24 @@ public class FollowerLogic implements ServerLogic {
                 RequestVoteRpc requestVoteRpc = new Gson().fromJson(message.getMessage(), RequestVoteRpc.class);
                 RequestVoteRpcReply requestVoteRpcReply = new RequestVoteRpcReply();
 
-                if (requestVoteRpc.getTerm() < term) {
+                if(requestVoteRpc.getTerm() < term){
                     LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc
                             .getCandidateId());
                     requestVoteRpcReply.setTerm(term);
                     requestVoteRpcReply.setVoteGranted(false);
-                } else {
-                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && log.last().getTerm() <= requestVoteRpc.getLastLogTerm()) {
+                }
+                else{
+                    if((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && log.last().getTerm() <= requestVoteRpc.getLastLogTerm() ){
                         LogUtils.debug(LOG_TAG, "Granting vote to candidate: " + requestVoteRpc.getCandidateId());
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
-                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Constants.TIMEOUT);
+
+                        // Reset timeout thread.
+                        TimeoutManager.getInstance().add(LOG_TAG, new TimeOut(serverContext, timeoutListener), Constants.TIMEOUT);
                         requestVoteRpcReply.setTerm(term);
                         requestVoteRpcReply.setVoteGranted(true);
-                    } else {
-                        LogUtils.debug(LOG_TAG, "My log is more updated. Not granting vote to candidate: " +
+                    }
+                    else{
+                        LogUtils.debug(LOG_TAG, "My log is more updated. Not granting vote to candidate " +
                                 requestVoteRpc.getCandidateId());
                         requestVoteRpcReply.setTerm(term);
                         requestVoteRpcReply.setVoteGranted(false);
@@ -145,10 +146,27 @@ public class FollowerLogic implements ServerLogic {
 
                 return reply;
 
-            default:
-                LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
+            default: LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
         }
         return null;
+    }
+
+    class TimeOut implements Runnable{
+
+        private TimeoutListener timeoutListener;
+        private ServerContext serverContext;
+
+        TimeOut(ServerContext serverContext, TimeoutListener timeoutListener){
+            this.timeoutListener = timeoutListener;
+            this.serverContext = serverContext;
+        }
+
+        @Override
+        public void run() {
+            LogUtils.debug(LOG_TAG, "Timed out.");
+            serverContext.setLeaderAddress(null);
+            timeoutListener.onTimeout();
+        }
     }
 }
 
