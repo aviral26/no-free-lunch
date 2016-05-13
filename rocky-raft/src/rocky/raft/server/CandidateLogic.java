@@ -67,22 +67,19 @@ public class CandidateLogic extends BaseLogic {
     protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
         switch (message.getMessageType()) {
 
-            case APPEND_ENTRIES_RPC:
-                // TODO
-
             case REQUEST_VOTE_RPC:
-                // TODO
+                // TODO Must be same or lesser term. Not granting vote.
 
             case REQUEST_VOTE_RPC_REPLY:
-                // TODO
+                // TODO If term is same, increment voteCount else do nothing.
 
             default:
-                LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
+                LogUtils.error(LOG_TAG, "Not an election message. Returning null. ");
         }
         return null;
     }
 
-    class SendVoteRequest implements Runnable {
+    private class SendVoteRequest implements Runnable {
 
         int sendTo;
 
