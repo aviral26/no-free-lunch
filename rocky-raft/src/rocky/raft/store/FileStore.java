@@ -28,7 +28,7 @@ public class FileStore<K, V> implements Store<K, V> {
     private static void initialize(File file) throws IOException {
         // Use a temp file so we don't leave a partially-initialized file.
         File tempFile = new File(file.getPath() + ".tmp");
-        try (RandomAccessFile raf = new RandomAccessFile(file, "rw")) {
+        try (RandomAccessFile raf = new RandomAccessFile(tempFile, "rw")) {
             raf.writeBytes("{}");
         }
 

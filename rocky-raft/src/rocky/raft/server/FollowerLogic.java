@@ -47,7 +47,7 @@ public class FollowerLogic extends BaseLogic {
     protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
         Message reply;
         Log log = serverContext.getLog();
-        int term = log.last().getTerm();
+        int currentTerm = serverContext.getCurrentTerm();
 
         switch (message.getMessageType()) {
 
@@ -61,9 +61,9 @@ public class FollowerLogic extends BaseLogic {
                 AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
 
-                if ((term > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
+                if ((currentTerm > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
                     appendEntriesRpcReply.setSuccess(false);
-                    appendEntriesRpcReply.setTerm(term);
+                    appendEntriesRpcReply.setTerm(currentTerm);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
                 } else {
                     for (LogEntry entry : appendEntriesRpc.getEntries()) {
@@ -82,7 +82,7 @@ public class FollowerLogic extends BaseLogic {
                     }
 
                     appendEntriesRpcReply.setSuccess(true);
-                    appendEntriesRpcReply.setTerm(term);
+                    appendEntriesRpcReply.setTerm(currentTerm);
                     LogUtils.debug(LOG_TAG, "Replying true to AppendEntriesRPC.");
                 }
 
@@ -96,23 +96,23 @@ public class FollowerLogic extends BaseLogic {
                 RequestVoteRpc requestVoteRpc = new Gson().fromJson(message.getMessage(), RequestVoteRpc.class);
                 RequestVoteRpcReply requestVoteRpcReply = new RequestVoteRpcReply();
 
-                if (requestVoteRpc.getTerm() < term) {
+                if (requestVoteRpc.getTerm() < currentTerm) {
                     LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc.getCandidateId());
-                    requestVoteRpcReply.setTerm(term);
+                    requestVoteRpcReply.setTerm(currentTerm);
                     requestVoteRpcReply.setVoteGranted(false);
                 } else {
-                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && log.last().getTerm() <= requestVoteRpc.getLastLogTerm()) {
+                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getCurrentTerm() <= requestVoteRpc.getLastLogTerm()) {
                         LogUtils.debug(LOG_TAG, "Granting vote to candidate: " + requestVoteRpc.getCandidateId());
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 
                         // Reset timeout thread.
                         TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
-                        requestVoteRpcReply.setTerm(term);
+                        requestVoteRpcReply.setTerm(currentTerm);
                         requestVoteRpcReply.setVoteGranted(true);
                     } else {
                         LogUtils.debug(LOG_TAG, "My log is more updated. Not granting vote to candidate " +
                                 requestVoteRpc.getCandidateId());
-                        requestVoteRpcReply.setTerm(term);
+                        requestVoteRpcReply.setTerm(currentTerm);
                         requestVoteRpcReply.setVoteGranted(false);
                     }
                 }

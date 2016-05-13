@@ -1,17 +1,13 @@
 package rocky.raft.server;
 
 import com.google.gson.Gson;
-import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
 import rocky.raft.dto.BaseRpc;
-import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
-import rocky.raft.log.CachedFileLog;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.MessageUtils;
 import rocky.raft.utils.Utils;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -22,10 +18,6 @@ public class RaftServer implements Server {
 
     private String LOG_TAG = "RAFT_SERVER-";
 
-    private String LOG_FILE = "raft-log-";
-
-    private String STORE_FILE = "raft-store-";
-
     private ServerContext serverContext;
 
     private ServerState state;
@@ -34,18 +26,8 @@ public class RaftServer implements Server {
 
     public RaftServer(int id) throws IOException {
         LOG_TAG += id;
-        serverContext = new ServerContext();
-        serverContext.setId(id);
-        serverContext.setAddress(Config.SERVERS.get(id));
-        serverContext.setLog(new CachedFileLog(new File(LOG_FILE + id)));
-
-        LogEntry last = serverContext.getLog().last();
-        serverContext.setCurrentTerm(last == null ? 0 : last.getTerm());
-
-        serverContext.setCommitIndex(0);
-        serverContext.setVotedFor(-1);
+        serverContext = new ServerContext(id);
         updateState(ServerState.INACTIVE);
-        serverContext.setLeaderAddress(null); // Will be set after election.
     }
 
     @Override
@@ -57,7 +39,7 @@ public class RaftServer implements Server {
     }
 
     private synchronized void updateState(ServerState state) {
-        serverLogic.release();
+        if (serverLogic != null) serverLogic.release();
 
         LogUtils.debug(LOG_TAG, "Updating server state to " + state.name());
 
