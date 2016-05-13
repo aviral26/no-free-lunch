@@ -103,6 +103,7 @@ public class RaftServer implements Server {
         Runnable runnable = () -> {
             ObjectInputStream ois = null;
             ObjectOutputStream oos = null;
+            Message reply;
 
             try {
                 LogUtils.debug(LOG_TAG, "Handling client");
@@ -111,12 +112,20 @@ public class RaftServer implements Server {
                 LogUtils.debug(LOG_TAG, "Received message from client " + message);
 
                 // A message from a client cannot cause the server to change state, so invoke ServerLogic directly.
-                Message reply = serverLogic.process(message);
+                reply = serverLogic.process(message);
+                oos = Utils.writeAndFlush(socket, reply);
 
+            } catch (Exception e) {
+                LogUtils.error(LOG_TAG, "Something went wrong while handling client. Notifying client...",
+                        e);
+                reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.toString());
+            }
+
+            try {
                 oos = Utils.writeAndFlush(socket, reply);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went wrong while handling client. Client not notified of failure.",
-                        e);
+                LogUtils.error(LOG_TAG, "Something went really really wrong while handling client. Client not " +
+                        "notified of failure.", e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);
@@ -156,14 +165,15 @@ public class RaftServer implements Server {
                     throw new NullPointerException("Got null reply");
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went wrong while handling server", e);
+                LogUtils.error(LOG_TAG, "Something went wrong while handling server. Notifying server...", e);
                 reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.getMessage());
             }
 
             try {
                 oos = Utils.writeAndFlush(socket, reply);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went really really wrong while handling server", e);
+                LogUtils.error(LOG_TAG, "Something went really really wrong while handling server. Server not " +
+                        "notified of failure.", e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);

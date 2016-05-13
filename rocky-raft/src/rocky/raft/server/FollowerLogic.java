@@ -1,13 +1,12 @@
 package rocky.raft.server;
 
 import com.google.gson.Gson;
-import rocky.raft.common.Constants;
+import rocky.raft.common.Config;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
 import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
-import rocky.raft.utils.Utils;
 
 public class FollowerLogic extends BaseLogic {
 
@@ -20,7 +19,7 @@ public class FollowerLogic extends BaseLogic {
         this.timeoutListener = timeoutListener;
 
         // Initialize time out thread.
-        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), getElectionTimeout());
+        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
     }
 
     @Override
@@ -64,7 +63,8 @@ public class FollowerLogic extends BaseLogic {
             case APPEND_ENTRIES_RPC:
 
                 // Heartbeat received. Reset time out thread.
-                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), getElectionTimeout());
+                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout
+                        ());
 
                 AppendEntriesRpc appendEntriesRpc = new Gson().fromJson(message.getMessage(), AppendEntriesRpc.class);
                 AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
@@ -117,7 +117,7 @@ public class FollowerLogic extends BaseLogic {
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 
                         // Reset timeout thread.
-                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), getElectionTimeout());
+                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
                         requestVoteRpcReply.setTerm(term);
                         requestVoteRpcReply.setVoteGranted(true);
                     } else {
@@ -138,10 +138,6 @@ public class FollowerLogic extends BaseLogic {
                 LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
         }
         return null;
-    }
-
-    private long getElectionTimeout() {
-        return Utils.getRandomLong(Constants.TIMEOUT_MIN, Constants.TIMEOUT_MAX + 1);
     }
 }
 

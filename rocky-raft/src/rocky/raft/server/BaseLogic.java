@@ -7,7 +7,7 @@ public abstract class BaseLogic implements ServerLogic {
 
     private String LOG_TAG = "BASE_LOGIC-";
 
-    private ServerContext serverContext;
+    protected ServerContext serverContext;
 
     public BaseLogic(ServerContext serverContext) {
         LOG_TAG += serverContext.getId();
