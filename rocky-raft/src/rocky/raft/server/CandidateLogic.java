@@ -14,7 +14,8 @@ public class CandidateLogic extends BaseLogic {
         LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
         serverContext.setLeaderAddress(null);
-        // TODO start election and vote for myself.
+
+        // TODO increment term, start election, vote for myself and set timeout thread.
     }
 
     @Override
