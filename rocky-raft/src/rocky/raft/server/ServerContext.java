@@ -2,7 +2,6 @@ package rocky.raft.server;
 
 import rocky.raft.dto.Address;
 import rocky.raft.log.Log;
-import rocky.raft.store.Store;
 
 public class ServerContext {
 
@@ -12,24 +11,16 @@ public class ServerContext {
 
     private Address leaderAddress;
 
+    private int currentTerm;
+
     private int votedFor;
 
     private Log log;
-
-    private Store<String, Integer> store;
 
     private int commitIndex;
 
     public int getId() {
         return id;
-    }
-
-    public int getVotedFor() {
-        return votedFor;
-    }
-
-    public void setVotedFor(int votedFor) {
-        this.votedFor = votedFor;
     }
 
     public void setId(int id) {
@@ -52,20 +43,28 @@ public class ServerContext {
         this.leaderAddress = leaderAddress;
     }
 
+    public int getCurrentTerm() {
+        return currentTerm;
+    }
+
+    public void setCurrentTerm(int currentTerm) {
+        this.currentTerm = currentTerm;
+    }
+
+    public int getVotedFor() {
+        return votedFor;
+    }
+
+    public void setVotedFor(int votedFor) {
+        this.votedFor = votedFor;
+    }
+
     public Log getLog() {
         return log;
     }
 
     public void setLog(Log log) {
         this.log = log;
-    }
-
-    public Store<String, Integer> getStore() {
-        return store;
-    }
-
-    public void setStore(Store<String, Integer> store) {
-        this.store = store;
     }
 
     public int getCommitIndex() {

@@ -4,7 +4,6 @@ import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
 import rocky.raft.dto.Message;
 import rocky.raft.log.CachedFileLog;
-import rocky.raft.store.FileStore;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.MessageUtils;
 import rocky.raft.utils.Utils;
@@ -36,7 +35,7 @@ public class RaftServer implements Server {
         serverContext.setId(id);
         serverContext.setAddress(Config.SERVERS.get(id));
         serverContext.setLog(new CachedFileLog(new File(LOG_FILE + id)));
-        serverContext.setStore(new FileStore<>(new File(STORE_FILE + id)));
+        serverContext.setCurrentTerm(0); // TODO
         serverContext.setCommitIndex(0);
         serverContext.setVotedFor(-1);
         updateState(ServerState.INACTIVE);
