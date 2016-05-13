@@ -1,7 +1,10 @@
 package rocky.raft.server;
 
+import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.ServerState;
+import rocky.raft.dto.BaseRpc;
+import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 import rocky.raft.log.CachedFileLog;
 import rocky.raft.utils.LogUtils;
@@ -35,7 +38,10 @@ public class RaftServer implements Server {
         serverContext.setId(id);
         serverContext.setAddress(Config.SERVERS.get(id));
         serverContext.setLog(new CachedFileLog(new File(LOG_FILE + id)));
-        serverContext.setCurrentTerm(0); // TODO
+
+        LogEntry last = serverContext.getLog().last();
+        serverContext.setCurrentTerm(last == null ? 0 : last.getTerm());
+
         serverContext.setCommitIndex(0);
         serverContext.setVotedFor(-1);
         updateState(ServerState.INACTIVE);
@@ -66,6 +72,13 @@ public class RaftServer implements Server {
             case CANDIDATE:
                 serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
+            case LEADER:
+                try{
+                    serverLogic = new LeaderLogic(serverContext, () -> updateState(ServerState.FOLLOWER));
+                }
+                catch(IOException e){
+                    LogUtils.error(LOG_TAG, "Failed to update to leader state.", e);
+                }
             default:
                 LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
         }
@@ -162,10 +175,26 @@ public class RaftServer implements Server {
     }
 
     private Message processServerMessage(Message message) throws Exception {
-        // TODO
-        // if message is going to cause a state change, handle it here;
-        // otherwise invoke ServerLogic.
-        return null;
+
+        BaseRpc baseRpc = new Gson().fromJson(message.getMessage(), BaseRpc.class);
+        boolean updateToFollower = false;
+
+        switch(message.getMessageType()){
+            case APPEND_ENTRIES_RPC:
+            case APPEND_ENTRIES_RPC_REPLY:
+                updateToFollower = baseRpc.getTerm() >= serverContext.getCurrentTerm();
+                break;
+            case REQUEST_VOTE_RPC:
+            case REQUEST_VOTE_RPC_REPLY:
+                updateToFollower = baseRpc.getTerm() > serverContext.getCurrentTerm();
+                break;
+        }
+
+        if (updateToFollower) {
+            serverContext.setCurrentTerm(baseRpc.getTerm());
+            updateState(ServerState.FOLLOWER);
+        }
+        return serverLogic.process(message);
     }
 
 }

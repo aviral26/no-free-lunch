@@ -1,5 +1,7 @@
 package rocky.raft.server;
 
+import rocky.raft.common.Config;
+import rocky.raft.common.TimeoutListener;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
@@ -14,18 +16,19 @@ public class LeaderLogic extends BaseLogic {
 
     private static String LOG_TAG = "LeaderLogic-";
 
-    public LeaderLogic(int serverCount, ServerContext serverContext) throws IOException {
+    public LeaderLogic(ServerContext serverContext, TimeoutListener timeoutListener) throws IOException {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 
-        nextIndex = new int[serverCount];
-        matchIndex = new int[serverCount];
+        nextIndex = new int[Config.SERVERS.size()];
+        matchIndex = new int[Config.SERVERS.size()];
 
         try {
             LogEntry entry = serverContext.getLog().last();
+            int index = entry == null ? 0 : entry.getIndex();
 
-            for (int i = 0; i < serverCount; ++i) {
-                nextIndex[i] = entry.getIndex() + 1;
+            for (int i = 0; i < Config.SERVERS.size(); ++i) {
+                nextIndex[i] = index + 1;
                 matchIndex[i] = 0;
             }
         } catch (Exception e) {
