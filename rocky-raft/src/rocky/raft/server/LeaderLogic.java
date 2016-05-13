@@ -29,8 +29,7 @@ public class LeaderLogic implements ServerLogic {
                 nextIndex[i] = entry.getIndex() + 1;
                 matchIndex[i] = 0;
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Could not read log. This will cause errors.");
         }
     }
