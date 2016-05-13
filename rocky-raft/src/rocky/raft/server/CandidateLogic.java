@@ -105,6 +105,9 @@ public class CandidateLogic extends BaseLogic {
                 voteRequest.setMessage(new Gson().toJson(requestVoteRpc));
                 objectOutputStream = Utils.getOos(socket);
                 objectOutputStream.writeObject(voteRequest);
+
+                // TODO We should not close the socket immediately after writing. We need to wait until the receiver has finished reading.
+
                 LogUtils.debug(LOG_TAG, "Vote request sent to " + Config.SERVERS.get(sendTo));
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));
