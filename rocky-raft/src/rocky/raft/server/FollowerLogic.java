@@ -1,7 +1,6 @@
 package rocky.raft.server;
 
 import com.google.gson.Gson;
-import rocky.raft.common.Config;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
@@ -10,7 +9,7 @@ import rocky.raft.utils.LogUtils;
 
 public class FollowerLogic extends BaseLogic {
 
-    private static String LOG_TAG = "FollowerLogic-";
+    private static String LOG_TAG = "FOLLOWER_LOGIC-";
     private TimeoutListener timeoutListener;
 
     FollowerLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
@@ -19,7 +18,7 @@ public class FollowerLogic extends BaseLogic {
         this.timeoutListener = timeoutListener;
 
         // Initialize time out thread.
-        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
+        TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
     }
 
     @Override
@@ -32,17 +31,10 @@ public class FollowerLogic extends BaseLogic {
         Message reply;
 
         switch (message.getMessageType()) {
-
             case GET_LEADER_ADDR:
                 reply = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
                 reply.setStatus(Message.Status.OK);
                 reply.setMessage(new Gson().toJson(serverContext.getLeaderAddress()));
-                return reply;
-
-            case GET_POSTS:
-                reply = new Message(Message.Sender.SERVER, Message.Type.POSTS);
-                reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(serverContext.getLog().getAll()));
                 return reply;
 
             default:
@@ -63,15 +55,13 @@ public class FollowerLogic extends BaseLogic {
             case APPEND_ENTRIES_RPC:
 
                 // Heartbeat received. Reset time out thread.
-                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout
-                        ());
+                TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
 
                 AppendEntriesRpc appendEntriesRpc = new Gson().fromJson(message.getMessage(), AppendEntriesRpc.class);
                 AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
 
-                if ((term > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm
-                        ())) {
+                if ((term > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
                     appendEntriesRpcReply.setSuccess(false);
                     appendEntriesRpcReply.setTerm(term);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
@@ -107,8 +97,7 @@ public class FollowerLogic extends BaseLogic {
                 RequestVoteRpcReply requestVoteRpcReply = new RequestVoteRpcReply();
 
                 if (requestVoteRpc.getTerm() < term) {
-                    LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc
-                            .getCandidateId());
+                    LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc.getCandidateId());
                     requestVoteRpcReply.setTerm(term);
                     requestVoteRpcReply.setVoteGranted(false);
                 } else {
@@ -117,7 +106,7 @@ public class FollowerLogic extends BaseLogic {
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 
                         // Reset timeout thread.
-                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
+                        TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
                         requestVoteRpcReply.setTerm(term);
                         requestVoteRpcReply.setVoteGranted(true);
                     } else {

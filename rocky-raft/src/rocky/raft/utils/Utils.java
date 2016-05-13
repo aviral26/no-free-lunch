@@ -9,16 +9,6 @@ public class Utils {
 
     private static final String LOG_TAG = "UTILS";
 
-    public static ObjectOutputStream writeAndFlush(Socket socket, Object object) throws IOException {
-        return writeAndFlush(getOos(socket), object);
-    }
-
-    public static ObjectOutputStream writeAndFlush(ObjectOutputStream oos, Object object) throws IOException {
-        oos.writeObject(object);
-        oos.flush();
-        return oos;
-    }
-
     public static ObjectOutputStream getOos(Socket socket) throws IOException {
         OutputStream os = socket.getOutputStream();
         return new ObjectOutputStream(os);

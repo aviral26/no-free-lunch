@@ -14,7 +14,7 @@ import java.net.Socket;
 
 public class CandidateLogic extends BaseLogic {
 
-    private String LOG_TAG = "CandidateLogic-";
+    private String LOG_TAG = "CANDIDATE_LOGIC-";
     private TimeoutListener timeoutListener;
     private int voteCount;
 
@@ -22,6 +22,7 @@ public class CandidateLogic extends BaseLogic {
         super(serverContext);
         LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
+        this.voteCount = 0;
         serverContext.setLeaderAddress(null);
 
         // Increment term, start election, vote for myself and set timeout thread.
@@ -39,7 +40,7 @@ public class CandidateLogic extends BaseLogic {
                 Utils.startThread(LOG_TAG + "-vote-request", new SendVoteRequest(i));
         }
 
-        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
+        TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
     }
 
 
@@ -54,10 +55,6 @@ public class CandidateLogic extends BaseLogic {
 
             case GET_LEADER_ADDR:
                 LogUtils.debug(LOG_TAG, "Leader not elected yet. Returning null.");
-                return null;
-
-            case GET_POSTS:
-                LogUtils.debug(LOG_TAG, "May not have up-to-date data. Returning null. ");
                 return null;
 
             default:
@@ -109,7 +106,8 @@ public class CandidateLogic extends BaseLogic {
                 requestVoteRpc.setLastLogTerm(serverContext.getLog().last().getTerm());
 
                 voteRequest.setMessage(new Gson().toJson(requestVoteRpc));
-                objectOutputStream = Utils.writeAndFlush(socket, voteRequest);
+                objectOutputStream = Utils.getOos(socket);
+                objectOutputStream.writeObject(voteRequest);
                 LogUtils.debug(LOG_TAG, "Vote request sent to " + Config.SERVERS.get(sendTo));
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));

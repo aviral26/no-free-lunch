@@ -23,14 +23,16 @@ public class RaftClient implements Client {
         for (Address address : servers) {
             try {
                 Socket socket = new Socket(address.getIp(), address.getClientPort());
-                Utils.writeAndFlush(socket, new Message(Message.Sender.CLIENT, Message.Type.GET_LEADER_ADDR));
+                Utils.getOos(socket).writeObject(new Message(Message.Sender.CLIENT, Message.Type.GET_LEADER_ADDR));
 
                 Message msg = (Message) Utils.getOis(socket).readObject();
                 Utils.closeQuietly(socket);
 
-                Address leaderAddress = new Gson().fromJson(msg.getMessage(), Address.class);
-                LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
-                return leaderAddress;
+                if (msg.getStatus() == Message.Status.OK) {
+                    Address leaderAddress = new Gson().fromJson(msg.getMessage(), Address.class);
+                    LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
+                    return leaderAddress;
+                }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Connect failed", e);
             }
@@ -48,7 +50,7 @@ public class RaftClient implements Client {
     @Override
     public List<String> lookup(Address address) throws Exception {
         Socket socket = new Socket(address.getIp(), address.getClientPort());
-        Utils.writeAndFlush(socket, new Message(Message.Sender.CLIENT, Message.Type.GET_POSTS));
+        Utils.getOos(socket).writeObject(new Message(Message.Sender.CLIENT, Message.Type.GET_POSTS));
 
         Message message = (Message) Utils.getOis(socket).readObject();
         Utils.closeQuietly(socket);
@@ -68,7 +70,7 @@ public class RaftClient implements Client {
         Message msg = new Message(Message.Sender.CLIENT, Message.Type.DO_POST);
         msg.setMessage(message);
 
-        Utils.writeAndFlush(socket, msg);
+        Utils.getOos(socket).writeObject(msg);
 
         Message response = (Message) Utils.getOis(socket).readObject();
         Utils.closeQuietly(socket);

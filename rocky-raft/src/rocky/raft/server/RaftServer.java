@@ -56,7 +56,7 @@ public class RaftServer implements Server {
         listenServers();
     }
 
-    private void updateState(ServerState state) {
+    private synchronized void updateState(ServerState state) {
         serverLogic.release();
 
         LogUtils.debug(LOG_TAG, "Updating server state to " + state.name());
@@ -78,6 +78,7 @@ public class RaftServer implements Server {
                 } catch (IOException e) {
                     LogUtils.error(LOG_TAG, "Failed to update to leader state.", e);
                 }
+                break;
             default:
                 LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
         }
@@ -102,29 +103,28 @@ public class RaftServer implements Server {
         Runnable runnable = () -> {
             ObjectInputStream ois = null;
             ObjectOutputStream oos = null;
-            Message reply;
+            Message reply = null;
 
             try {
-                LogUtils.debug(LOG_TAG, "Handling client");
                 ois = Utils.getOis(socket);
                 Message message = (Message) ois.readObject();
                 LogUtils.debug(LOG_TAG, "Received message from client " + message);
 
                 // A message from a client cannot cause the server to change state, so invoke ServerLogic directly.
                 reply = serverLogic.process(message);
-                oos = Utils.writeAndFlush(socket, reply);
-
+                if (reply == null) {
+                    throw new NullPointerException("Got null reply from serverLogic");
+                }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went wrong while handling client. Notifying client...",
-                        e);
+                LogUtils.error(LOG_TAG, "Something went wrong while handling client. Notifying client...", e);
                 reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.toString());
             }
 
             try {
-                oos = Utils.writeAndFlush(socket, reply);
+                oos = Utils.getOos(socket);
+                oos.writeObject(reply);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went really really wrong while handling client. Client not " +
-                        "notified of failure.", e);
+                LogUtils.error(LOG_TAG, "Something went really really wrong while handling client. Client not notified of failure.", e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);
@@ -154,14 +154,14 @@ public class RaftServer implements Server {
         Runnable runnable = () -> {
             ObjectInputStream ois = null;
             ObjectOutputStream oos = null;
-
             Message reply = null;
+
             try {
                 ois = Utils.getOis(socket);
                 Message message = (Message) ois.readObject();
                 reply = processServerMessage(message);
                 if (reply == null) {
-                    throw new NullPointerException("Got null reply");
+                    throw new NullPointerException("Got null reply from serverLogic");
                 }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went wrong while handling server. Notifying server...", e);
@@ -169,10 +169,10 @@ public class RaftServer implements Server {
             }
 
             try {
-                oos = Utils.writeAndFlush(socket, reply);
+                oos = Utils.getOos(socket);
+                oos.writeObject(reply);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Something went really really wrong while handling server. Server not " +
-                        "notified of failure.", e);
+                LogUtils.error(LOG_TAG, "Something went really really wrong while handling server. Server not notified of failure.", e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);
@@ -184,7 +184,6 @@ public class RaftServer implements Server {
     }
 
     private Message processServerMessage(Message message) throws Exception {
-
         BaseRpc baseRpc = new Gson().fromJson(message.getMessage(), BaseRpc.class);
         boolean updateToFollower = false;
 
@@ -205,5 +204,4 @@ public class RaftServer implements Server {
         }
         return serverLogic.process(message);
     }
-
 }
