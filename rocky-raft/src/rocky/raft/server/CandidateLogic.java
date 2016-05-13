@@ -82,6 +82,7 @@ public class CandidateLogic implements ServerLogic {
         public void run() {
             LogUtils.debug(LOG_TAG, "Timed out.");
             serverContext.setLeaderAddress(null);
+            // TODO set state to inactive and wait a random amount of time
             timeoutListener.onTimeout();
         }
     }
