@@ -22,7 +22,7 @@ public class FollowerLogic implements ServerLogic {
 
     @Override
     public void release() {
-        // TODO
+        TimeoutManager.getInstance().remove(LOG_TAG);
     }
 
     @Override
