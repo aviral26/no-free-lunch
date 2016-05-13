@@ -3,6 +3,7 @@ package rocky.raft.utils;
 import java.io.*;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Utils {
 
@@ -48,5 +49,9 @@ public class Utils {
             } catch (Exception e) {
             }
         }
+    }
+
+    public static long getRandomLong(long min, long max) {
+        return ThreadLocalRandom.current().nextLong(min, max);
     }
 }

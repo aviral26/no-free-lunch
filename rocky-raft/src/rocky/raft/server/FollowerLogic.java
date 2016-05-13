@@ -7,6 +7,7 @@ import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
 import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.Utils;
 
 public class FollowerLogic implements ServerLogic {
 
@@ -78,8 +79,7 @@ public class FollowerLogic implements ServerLogic {
             case APPEND_ENTRIES_RPC:
 
                 // Heartbeat received. Reset time out thread.
-                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Constants
-                        .TIMEOUT);
+                TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), getElectionTimeout());
 
                 AppendEntriesRpc appendEntriesRpc = new Gson().fromJson(message.getMessage(), AppendEntriesRpc.class);
                 AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
@@ -132,7 +132,7 @@ public class FollowerLogic implements ServerLogic {
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 
                         // Reset timeout thread.
-                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Constants.TIMEOUT);
+                        TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), getElectionTimeout());
                         requestVoteRpcReply.setTerm(term);
                         requestVoteRpcReply.setVoteGranted(true);
                     } else {
@@ -153,6 +153,10 @@ public class FollowerLogic implements ServerLogic {
                 LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
         }
         return null;
+    }
+
+    private long getElectionTimeout() {
+        return Utils.getRandomLong(Constants.TIMEOUT_MIN, Constants.TIMEOUT_MAX + 1);
     }
 }
 
