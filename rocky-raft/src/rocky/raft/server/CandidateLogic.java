@@ -29,11 +29,11 @@ public class CandidateLogic extends BaseLogic {
     }
 
 
-    private void startElectionAndSetTimeout(){
+    private void startElectionAndSetTimeout() {
         serverContext.setCurrentTerm(serverContext.getCurrentTerm() + 1);
 
-        for(int i = 0; i < Config.SERVERS.size(); i++){
-            if(i == serverContext.getId())
+        for (int i = 0; i < Config.SERVERS.size(); i++) {
+            if (i == serverContext.getId())
                 voteCount++;
             else
                 Utils.startThread(LOG_TAG + "-vote-request", new SendVoteRequest(i));
@@ -41,7 +41,6 @@ public class CandidateLogic extends BaseLogic {
 
         TimeoutManager.getInstance().add(LOG_TAG, () -> timeoutListener.onTimeout(), Config.getElectionTimeout());
     }
-
 
 
     @Override
@@ -90,7 +89,7 @@ public class CandidateLogic extends BaseLogic {
 
         int sendTo;
 
-        SendVoteRequest(int id){
+        SendVoteRequest(int id) {
             this.sendTo = id;
         }
 
@@ -99,7 +98,7 @@ public class CandidateLogic extends BaseLogic {
             Socket socket = null;
             ObjectOutputStream objectOutputStream = null;
 
-            try{
+            try {
                 socket = new Socket(Config.SERVERS.get(sendTo).getIp(), Config.SERVERS.get(sendTo).getServerPort());
                 Message voteRequest = new Message(Message.Sender.SERVER, Message.Type.REQUEST_VOTE_RPC);
                 RequestVoteRpc requestVoteRpc = new RequestVoteRpc();
@@ -112,11 +111,9 @@ public class CandidateLogic extends BaseLogic {
                 voteRequest.setMessage(new Gson().toJson(requestVoteRpc));
                 objectOutputStream = Utils.writeAndFlush(socket, voteRequest);
                 LogUtils.debug(LOG_TAG, "Vote request sent to " + Config.SERVERS.get(sendTo));
-            }
-            catch(Exception e){
+            } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));
-            }
-            finally {
+            } finally {
                 Utils.closeQuietly(objectOutputStream);
                 Utils.closeQuietly(socket);
             }

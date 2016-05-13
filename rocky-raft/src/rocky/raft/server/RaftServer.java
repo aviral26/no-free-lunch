@@ -73,10 +73,9 @@ public class RaftServer implements Server {
                 serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
             case LEADER:
-                try{
+                try {
                     serverLogic = new LeaderLogic(serverContext, () -> updateState(ServerState.FOLLOWER));
-                }
-                catch(IOException e){
+                } catch (IOException e) {
                     LogUtils.error(LOG_TAG, "Failed to update to leader state.", e);
                 }
             default:
@@ -189,7 +188,7 @@ public class RaftServer implements Server {
         BaseRpc baseRpc = new Gson().fromJson(message.getMessage(), BaseRpc.class);
         boolean updateToFollower = false;
 
-        switch(message.getMessageType()){
+        switch (message.getMessageType()) {
             case APPEND_ENTRIES_RPC:
             case APPEND_ENTRIES_RPC_REPLY:
                 updateToFollower = baseRpc.getTerm() >= serverContext.getCurrentTerm();
