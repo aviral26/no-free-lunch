@@ -14,6 +14,7 @@ public class CandidateLogic implements ServerLogic {
         this.serverContext = serverContext;
         LOG_TAG += this.serverContext;
         this.timeoutListener = timeoutListener;
+        serverContext.setLeaderAddress(null);
         // TODO start election and vote for myself.
     }
 
@@ -70,24 +71,5 @@ public class CandidateLogic implements ServerLogic {
                 LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");
         }
         return null;
-    }
-
-    class TimeOut implements Runnable {
-
-        private TimeoutListener timeoutListener;
-        private ServerContext serverContext;
-
-        TimeOut(ServerContext serverContext, TimeoutListener timeoutListener) {
-            this.timeoutListener = timeoutListener;
-            this.serverContext = serverContext;
-        }
-
-        @Override
-        public void run() {
-            LogUtils.debug(LOG_TAG, "Timed out.");
-            serverContext.setLeaderAddress(null);
-            // TODO set state to inactive and wait a random amount of time
-            timeoutListener.onTimeout();
-        }
     }
 }
