@@ -2,22 +2,13 @@ package rocky.raft.dto;
 
 import java.util.List;
 
-public class AppendEntriesRpc {
+public class AppendEntriesRpc extends BaseRpc {
 
-    private int term;
     private int leaderId;
     private int prevLogIndex;
     private int prevLogTerm;
     private List<LogEntry> entries;
     private int leaderCommit;
-
-    public int getTerm() {
-        return term;
-    }
-
-    public void setTerm(int term) {
-        this.term = term;
-    }
 
     public int getLeaderId() {
         return leaderId;

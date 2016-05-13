@@ -9,15 +9,14 @@ import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
 
-public class FollowerLogic implements ServerLogic {
+public class FollowerLogic extends BaseLogic {
 
     private static String LOG_TAG = "FollowerLogic-";
-    private ServerContext serverContext;
     private TimeoutListener timeoutListener;
 
     FollowerLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
+        super(serverContext);
         LOG_TAG += serverContext.getId();
-        this.serverContext = serverContext;
         this.timeoutListener = timeoutListener;
     }
 
@@ -27,25 +26,7 @@ public class FollowerLogic implements ServerLogic {
     }
 
     @Override
-    public Message process(Message message) {
-        try {
-            switch (message.getSender()) {
-                case CLIENT:
-                    return handleClient(message, serverContext.getLeaderAddress(), serverContext.getLog());
-
-                case SERVER:
-                    return handleServer(message);
-
-                default:
-                    LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null.");
-            }
-        } catch (Exception e) {
-            LogUtils.error(LOG_TAG, "Something went wrong while processing message. Returning null.", e);
-        }
-        return null;
-    }
-
-    private Message handleClient(Message message, Address leader, Log log) throws Exception {
+    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
         Message reply;
 
         switch (message.getMessageType()) {
@@ -53,13 +34,13 @@ public class FollowerLogic implements ServerLogic {
             case GET_LEADER_ADDR:
                 reply = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
                 reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(leader));
+                reply.setMessage(new Gson().toJson(serverContext.getLeaderAddress()));
                 return reply;
 
             case GET_POSTS:
                 reply = new Message(Message.Sender.SERVER, Message.Type.POSTS);
                 reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(log.getAll()));
+                reply.setMessage(new Gson().toJson(serverContext.getLog().getAll()));
                 return reply;
 
             default:
@@ -68,7 +49,8 @@ public class FollowerLogic implements ServerLogic {
         return null;
     }
 
-    private Message handleServer(Message message) throws Exception {
+    @Override
+    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
         Message reply;
         Log log = serverContext.getLog();
         int term = log.last().getTerm();

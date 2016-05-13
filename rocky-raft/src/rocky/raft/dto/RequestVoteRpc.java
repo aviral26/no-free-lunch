@@ -1,19 +1,10 @@
 package rocky.raft.dto;
 
-public class RequestVoteRpc {
+public class RequestVoteRpc extends BaseRpc {
 
-    private int term;
     private int candidateId;
     private int lastLogIndex;
     private int lastLogTerm;
-
-    public int getTerm() {
-        return term;
-    }
-
-    public void setTerm(int term) {
-        this.term = term;
-    }
 
     public int getCandidateId() {
         return candidateId;

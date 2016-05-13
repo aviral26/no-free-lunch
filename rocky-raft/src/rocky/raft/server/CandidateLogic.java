@@ -4,15 +4,14 @@ import rocky.raft.common.TimeoutListener;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
 
-public class CandidateLogic implements ServerLogic {
+public class CandidateLogic extends BaseLogic {
 
     private String LOG_TAG = "CandidateLogic-";
-    private ServerContext serverContext;
     private TimeoutListener timeoutListener;
 
     CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
-        this.serverContext = serverContext;
-        LOG_TAG += this.serverContext;
+        super(serverContext);
+        LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
         serverContext.setLeaderAddress(null);
         // TODO start election and vote for myself.
@@ -24,21 +23,7 @@ public class CandidateLogic implements ServerLogic {
     }
 
     @Override
-    public Message process(Message message) {
-        switch (message.getSender()) {
-            case CLIENT:
-                return handleClient(message);
-
-            case SERVER:
-                return handleServer(message);
-
-            default:
-                LogUtils.error(LOG_TAG, "Unrecognised sender. Returning null. ");
-        }
-        return null;
-    }
-
-    private Message handleClient(Message message) {
+    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
         switch (message.getMessageType()) {
 
             case GET_LEADER_ADDR:
@@ -55,7 +40,8 @@ public class CandidateLogic implements ServerLogic {
         return null;
     }
 
-    private Message handleServer(Message message) {
+    @Override
+    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
         switch (message.getMessageType()) {
 
             case APPEND_ENTRIES_RPC:

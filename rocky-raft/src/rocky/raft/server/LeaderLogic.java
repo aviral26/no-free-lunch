@@ -6,18 +6,17 @@ import rocky.raft.utils.LogUtils;
 
 import java.io.IOException;
 
-public class LeaderLogic implements ServerLogic {
+public class LeaderLogic extends BaseLogic {
 
     private int[] nextIndex;
 
     private int[] matchIndex;
 
-    private ServerContext serverContext;
     private static String LOG_TAG = "LeaderLogic-";
 
     public LeaderLogic(int serverCount, ServerContext serverContext) throws IOException {
-        this.serverContext = serverContext;
-        LOG_TAG += this.serverContext.getId();
+        super(serverContext);
+        LOG_TAG += serverContext.getId();
 
         nextIndex = new int[serverCount];
         matchIndex = new int[serverCount];
@@ -35,12 +34,17 @@ public class LeaderLogic implements ServerLogic {
     }
 
     @Override
-    public Message process(Message message) {
+    public void release() {
+
+    }
+
+    @Override
+    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
         return null;
     }
 
     @Override
-    public void release() {
-
+    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
+        return null;
     }
 }

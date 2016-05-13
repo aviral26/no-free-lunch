@@ -6,6 +6,7 @@ import rocky.raft.dto.Message;
 import rocky.raft.log.CachedFileLog;
 import rocky.raft.store.FileStore;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.MessageUtils;
 import rocky.raft.utils.Utils;
 
 import java.io.File;
@@ -134,15 +135,23 @@ public class RaftServer implements Server {
             ObjectInputStream ois = null;
             ObjectOutputStream oos = null;
 
+            Message reply = null;
             try {
                 ois = Utils.getOis(socket);
                 Message message = (Message) ois.readObject();
-
-                Message reply = processServerMessage(message);
-
-                oos = Utils.writeAndFlush(socket, reply);
+                reply = processServerMessage(message);
+                if (reply == null) {
+                    throw new NullPointerException("Got null reply");
+                }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went wrong while handling server", e);
+                reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.getMessage());
+            }
+
+            try {
+                oos = Utils.writeAndFlush(socket, reply);
+            } catch (Exception e) {
+                LogUtils.error(LOG_TAG, "Something went really really wrong while handling server", e);
             } finally {
                 Utils.closeQuietly(ois);
                 Utils.closeQuietly(oos);

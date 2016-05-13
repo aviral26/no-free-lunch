@@ -1,17 +1,8 @@
 package rocky.raft.dto;
 
-public class AppendEntriesRpcReply {
+public class AppendEntriesRpcReply extends BaseRpc {
 
-    private int term;
     private boolean success;
-
-    public int getTerm() {
-        return term;
-    }
-
-    public void setTerm(int term) {
-        this.term = term;
-    }
 
     public boolean isSuccess() {
         return success;

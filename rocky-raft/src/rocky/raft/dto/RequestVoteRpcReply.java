@@ -1,18 +1,9 @@
 package rocky.raft.dto;
 
 
-public class RequestVoteRpcReply {
+public class RequestVoteRpcReply extends BaseRpc {
 
-    private int term;
     private boolean voteGranted;
-
-    public int getTerm() {
-        return term;
-    }
-
-    public void setTerm(int term) {
-        this.term = term;
-    }
 
     public boolean isVoteGranted() {
         return voteGranted;
