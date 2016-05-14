@@ -2,7 +2,6 @@ package rocky.raft.server;
 
 import rocky.raft.common.Config;
 import rocky.raft.common.Constants;
-import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
 import rocky.raft.log.Log;
@@ -27,7 +26,7 @@ public class LeaderLogic extends BaseLogic {
 
     private int[] matchIndex;
 
-    public LeaderLogic(ServerContext serverContext, TimeoutListener timeoutListener) throws IOException {
+    public LeaderLogic(ServerContext serverContext) throws IOException {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 

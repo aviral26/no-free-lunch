@@ -54,7 +54,7 @@ public class RaftServer implements Server {
                 break;
             case LEADER:
                 try {
-                    serverLogic = new LeaderLogic(serverContext, () -> updateState(ServerState.FOLLOWER));
+                    serverLogic = new LeaderLogic(serverContext);
                 } catch (IOException e) {
                     LogUtils.error(LOG_TAG, "Failed to update to leader state.", e);
                 }
