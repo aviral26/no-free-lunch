@@ -182,14 +182,12 @@ public class LogUtils {
             }
         }
 
-        synchronized private void print(String message, Throwable throwable) {
+        private void print(String message, Throwable throwable) {
             if (message != null) {
                 System.out.println(message);
-                System.out.flush();
             }
             if (throwable != null) {
                 throwable.printStackTrace();
-                System.err.flush();
             }
         }
     }
