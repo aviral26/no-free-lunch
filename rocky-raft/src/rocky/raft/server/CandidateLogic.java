@@ -25,6 +25,7 @@ public class CandidateLogic extends BaseLogic {
     private OnMajorityReachedListener onMajorityReachedListener;
     private int clusterSize;
     private int voteCount;
+    private boolean released;
 
     CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener, OnMajorityReachedListener onMajorityReachedListener) {
         super(serverContext);
@@ -33,20 +34,25 @@ public class CandidateLogic extends BaseLogic {
         this.onMajorityReachedListener = onMajorityReachedListener;
         this.clusterSize = Config.SERVERS.size();
         this.voteCount = 0;
+        this.released = false;
         serverContext.setLeaderAddress(null);
 
         resetVoteExecutor();
+    }
 
+    @Override
+    public void init() {
         // Increment term, start election, vote for myself and set timeout thread.
         startElectionAndSetTimeout();
     }
 
     private void resetVoteExecutor() {
         if (voteExecutor != null) voteExecutor.shutdownNow();
-        voteExecutor = Executors.newFixedThreadPool(clusterSize - 1);
+        voteExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
     }
 
     private void startElectionAndSetTimeout() {
+        LogUtils.debug(LOG_TAG, "begin startElection, released:" + released);
         serverContext.setCurrentTerm(serverContext.getCurrentTerm() + 1);
 
         for (int i = 0; i < Config.SERVERS.size(); i++) {
@@ -57,7 +63,10 @@ public class CandidateLogic extends BaseLogic {
             }
         }
 
-        TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
+        LogUtils.debug(LOG_TAG, "end startElection, released:" + released);
+        if (!released) {
+            TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
+        }
     }
 
     private synchronized void incrementVoteCount() {
@@ -69,6 +78,7 @@ public class CandidateLogic extends BaseLogic {
 
     @Override
     public void release() {
+        released = true;
         voteExecutor.shutdownNow();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }

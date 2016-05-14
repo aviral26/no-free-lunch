@@ -13,6 +13,11 @@ public class InactiveLogic extends BaseLogic {
     }
 
     @Override
+    public void init() {
+        // Do nothing
+    }
+
+    @Override
     protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
         LogUtils.debug(LOG_TAG, "Do nothing");
         return null;

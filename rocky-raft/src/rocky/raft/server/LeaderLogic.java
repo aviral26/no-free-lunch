@@ -49,13 +49,16 @@ public class LeaderLogic extends BaseLogic {
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Could not read log. This will cause errors.");
         }
+    }
 
+    @Override
+    public void init() {
         sendHeartbeat();
     }
 
     private void resetHeartbeatExecutor() {
         if (hearbeatExecutor != null) hearbeatExecutor.shutdownNow();
-        hearbeatExecutor = Executors.newFixedThreadPool(clusterSize - 1);
+        hearbeatExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
     }
 
     @Override

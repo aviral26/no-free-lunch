@@ -54,9 +54,9 @@ public class RaftServer implements Server {
             case LEADER:
                 serverLogic = new LeaderLogic(serverContext);
                 break;
-            default:
-                LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
         }
+
+        serverLogic.init();
     }
 
     private void listenClients() {

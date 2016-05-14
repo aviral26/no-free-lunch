@@ -15,7 +15,10 @@ public class FollowerLogic extends BaseLogic {
         super(serverContext);
         LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
+    }
 
+    @Override
+    public void init() {
         // Initialize time out thread.
         TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
     }
