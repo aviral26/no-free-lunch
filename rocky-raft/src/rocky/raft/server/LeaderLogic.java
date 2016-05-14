@@ -12,10 +12,14 @@ import rocky.raft.utils.Utils;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class LeaderLogic extends BaseLogic {
 
-    private static String LOG_TAG = "LEADER_LOGIC-";
+    private String LOG_TAG = "LEADER_LOGIC-";
+
+    private ExecutorService hearbeatExecutor;
 
     private int clusterSize;
 
@@ -45,8 +49,14 @@ public class LeaderLogic extends BaseLogic {
         sendHeartbeat();
     }
 
+    private void resetHeartbeatExecutor() {
+        if (hearbeatExecutor != null) hearbeatExecutor.shutdownNow();
+        hearbeatExecutor = Executors.newFixedThreadPool(clusterSize - 1);
+    }
+
     @Override
     public void release() {
+        hearbeatExecutor.shutdownNow();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }
 
@@ -71,20 +81,16 @@ public class LeaderLogic extends BaseLogic {
     }
 
     private void sendHeartbeat() {
-        LogUtils.debug(LOG_TAG, "Sending heartbeat to followers");
+        // Terminate previous hearbeats
+        resetHeartbeatExecutor();
 
+        // Send new heartbeats
+        LogUtils.debug(LOG_TAG, "Sending heartbeat to followers");
         int leaderId = serverContext.getId();
 
         for (int id = 0; id < clusterSize; ++id) {
             if (id != leaderId) {
-                final int followerId = id;
-                Utils.startThread("heartbeat-f" + followerId, () -> {
-                    try {
-                        doSendHeartbeat(followerId);
-                    } catch (Exception e) {
-                        LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId, e);
-                    }
-                });
+                hearbeatExecutor.submit(new SendHearbeatTask(id));
             }
         }
 
@@ -96,47 +102,6 @@ public class LeaderLogic extends BaseLogic {
 
         // Enqueue next heartbeat
         TimeoutManager.getInstance().add(LOG_TAG, this::sendHeartbeat, Constants.HEARTBEAT_DELAY);
-    }
-
-    private void doSendHeartbeat(int followerId) throws Exception {
-        int index = serverContext.getLastIndex();
-        int term = serverContext.getCurrentTerm();
-        int id = serverContext.getId();
-        int commitIndex = serverContext.getCommitIndex();
-
-        if (index >= nextIndex[followerId]) {
-            Address address = Config.SERVERS.get(followerId);
-            Socket socket = new Socket(address.getIp(), address.getServerPort());
-
-            // Prepare message
-            int prevLogIndex = nextIndex[followerId] - 1;
-            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
-            int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
-            List<LogEntry> entries = serverContext.getLog().getAll(nextIndex[followerId]);
-            Message message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC)
-                    .setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex)).build();
-
-            // Send AppendEntriesRpc
-            Utils.getOos(socket).writeObject(message);
-
-            // Get AppendEntriesRpcReply
-            Message reply = (Message) Utils.getOis(socket).readObject();
-            if (reply.getStatus() != Message.Status.OK) {
-                throw new Exception("Received error message from follower(" + followerId + "): " + reply);
-            }
-
-            // Process reply
-            AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
-            if (appendEntriesRpcReply.isSuccess()) {
-                nextIndex[followerId] = index;
-                matchIndex[followerId] = index;
-            } else {
-                nextIndex[followerId]--;
-            }
-
-            // Close connection
-            Utils.closeQuietly(socket);
-        }
     }
 
     private void updateCommitIndex(ServerContext serverContext) throws IOException {
@@ -159,6 +124,65 @@ public class LeaderLogic extends BaseLogic {
                     serverContext.setCommitIndex(n);
                     break;
                 }
+            }
+        }
+    }
+
+    private class SendHearbeatTask implements Runnable {
+
+        private int followerId;
+
+        public SendHearbeatTask(int followerId) {
+            this.followerId = followerId;
+        }
+
+        @Override
+        public void run() {
+            try {
+                doSendHeartbeat(followerId);
+            } catch (Exception e) {
+                LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId, e);
+            }
+        }
+
+        private void doSendHeartbeat(int followerId) throws Exception {
+            int index = serverContext.getLastIndex();
+            int term = serverContext.getCurrentTerm();
+            int id = serverContext.getId();
+            int commitIndex = serverContext.getCommitIndex();
+
+            if (index >= nextIndex[followerId]) {
+                Address address = Config.SERVERS.get(followerId);
+                Socket socket = new Socket(address.getIp(), address.getServerPort());
+
+                // Prepare message
+                int prevLogIndex = nextIndex[followerId] - 1;
+                LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
+                int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
+                List<LogEntry> entries = serverContext.getLog().getAll(nextIndex[followerId]);
+                Message message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC)
+                        .setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex)).build();
+
+                // Send AppendEntriesRpc
+                Utils.getOos(socket).writeObject(message);
+
+                // Get AppendEntriesRpcReply
+                Message reply = (Message) Utils.getOis(socket).readObject();
+                if (reply.getStatus() != Message.Status.OK) {
+                    throw new Exception("Received error message from follower(" + followerId + "): " + reply);
+                }
+
+                // Process reply
+                AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
+                if (appendEntriesRpcReply.isSuccess()) {
+                    nextIndex[followerId] = index;
+                    matchIndex[followerId] = index;
+                } else {
+                    nextIndex[followerId]--;
+                }
+
+                // Close connection
+                Utils.closeQuietly(socket);
             }
         }
     }
