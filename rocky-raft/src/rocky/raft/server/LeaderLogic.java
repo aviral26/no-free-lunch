@@ -2,6 +2,7 @@ package rocky.raft.server;
 
 import rocky.raft.common.Config;
 import rocky.raft.common.Constants;
+import rocky.raft.common.InterruptibleSemaphore;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
 import rocky.raft.log.Log;
@@ -11,6 +12,8 @@ import rocky.raft.utils.NetworkUtils;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,6 +28,8 @@ public class LeaderLogic extends BaseLogic {
     private int[] nextIndex;
 
     private int[] matchIndex;
+
+    private Map<Integer, InterruptibleSemaphore> semaphoreMap = new ConcurrentHashMap<>();
 
     public LeaderLogic(ServerContext serverContext) {
         super(serverContext);
@@ -56,6 +61,7 @@ public class LeaderLogic extends BaseLogic {
     @Override
     public void release() {
         hearbeatExecutor.shutdownNow();
+        interruptAllClients();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }
 
@@ -64,20 +70,39 @@ public class LeaderLogic extends BaseLogic {
         switch (message.getType()) {
             case DO_POST:
                 String post = ((DoPost) message.getMeta()).getPost();
-                doPost(post);
-                return new Message.Builder().setType(Message.Type.DO_POST)
+                LogEntry entry = doPost(post);
+                waitForCommit(entry);
+                return new Message.Builder().setType(Message.Type.DO_POST_REPLY)
                         .setStatus(Message.Status.OK).build();
         }
         return null;
     }
 
-    private void doPost(String post) throws Exception {
+    private void interruptAllClients() {
+        for (InterruptibleSemaphore semaphore : semaphoreMap.values()) {
+            semaphore.interrupt();
+        }
+    }
+
+    private void waitForCommit(LogEntry entry) throws InterruptedException {
+        LogUtils.debug(LOG_TAG, "Waiting until entry is committed");
+        InterruptibleSemaphore semaphore = new InterruptibleSemaphore(0);
+        semaphoreMap.put(entry.getIndex(), semaphore);
+        try {
+            semaphore.acquire();
+            // TODO No timeout here. What to do?
+        } finally {
+            semaphoreMap.remove(entry.getIndex());
+        }
+    }
+
+    private synchronized LogEntry doPost(String post) throws Exception {
         int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
 
         LogEntry entry = new LogEntry(lastIndex + 1, term, post);
         serverContext.getLog().append(entry);
-        // TODO Block here till the post is replicated sufficiently - check commitIndex
+        return entry;
     }
 
     private void sendHeartbeat() {
@@ -104,6 +129,14 @@ public class LeaderLogic extends BaseLogic {
         TimeoutManager.getInstance().add(LOG_TAG, this::sendHeartbeat, Constants.HEARTBEAT_DELAY);
     }
 
+    private void notifyClients(int oldCommitIndex, int newCommitIndex) {
+        for (Integer index : semaphoreMap.keySet()) {
+            if (index > oldCommitIndex && index <= newCommitIndex) {
+                semaphoreMap.get(index).release();
+            }
+        }
+    }
+
     private void updateCommitIndex(ServerContext serverContext) throws IOException {
         Log log = serverContext.getLog();
         int lastIndex = serverContext.getLastIndex();
@@ -122,6 +155,7 @@ public class LeaderLogic extends BaseLogic {
                 if (entry != null && entry.getTerm() == currentTerm) {
                     LogUtils.debug(LOG_TAG, "Updating commitIndex to " + n);
                     serverContext.setCommitIndex(n);
+                    notifyClients(commitIndex, n);
                     break;
                 }
             }
