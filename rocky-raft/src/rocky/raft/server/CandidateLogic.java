@@ -25,7 +25,6 @@ public class CandidateLogic extends BaseLogic {
     private OnMajorityReachedListener onMajorityReachedListener;
     private int clusterSize;
     private int voteCount;
-    private boolean released;
 
     CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener, OnMajorityReachedListener onMajorityReachedListener) {
         super(serverContext);
@@ -34,7 +33,6 @@ public class CandidateLogic extends BaseLogic {
         this.onMajorityReachedListener = onMajorityReachedListener;
         this.clusterSize = Config.SERVERS.size();
         this.voteCount = 0;
-        this.released = false;
         serverContext.setLeaderAddress(null);
 
         resetVoteExecutor();
@@ -52,7 +50,8 @@ public class CandidateLogic extends BaseLogic {
     }
 
     private void startElectionAndSetTimeout() {
-        LogUtils.debug(LOG_TAG, "begin startElection, released:" + released);
+        TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
+
         serverContext.setCurrentTerm(serverContext.getCurrentTerm() + 1);
 
         for (int i = 0; i < Config.SERVERS.size(); i++) {
@@ -61,11 +60,6 @@ public class CandidateLogic extends BaseLogic {
             } else {
                 voteExecutor.submit(new SendVoteRequest(i));
             }
-        }
-
-        LogUtils.debug(LOG_TAG, "end startElection, released:" + released);
-        if (!released) {
-            TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
         }
     }
 
@@ -78,7 +72,6 @@ public class CandidateLogic extends BaseLogic {
 
     @Override
     public void release() {
-        released = true;
         voteExecutor.shutdownNow();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }
