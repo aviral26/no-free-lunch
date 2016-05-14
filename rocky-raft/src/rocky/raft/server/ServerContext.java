@@ -124,12 +124,14 @@ public class ServerContext {
     @Override
     public String toString() {
         return "ServerContext{" +
-                "commitIndex=" + commitIndex +
-                ", votedFor=" + votedFor +
-                ", currentTerm=" + currentTerm +
-                ", leaderAddress=" + leaderAddress +
+                "id=" + id +
                 ", address=" + address +
-                ", id=" + id +
+                ", leaderAddress=" + leaderAddress +
+                ", store=" + store +
+                ", currentTerm=" + currentTerm +
+                ", votedFor=" + votedFor +
+                ", log=" + log +
+                ", commitIndex=" + commitIndex +
                 '}';
     }
 }
