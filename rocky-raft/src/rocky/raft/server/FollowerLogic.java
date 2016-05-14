@@ -35,11 +35,6 @@ public class FollowerLogic extends BaseLogic {
 
         switch (message.getType()) {
 
-            case GET_LEADER_ADDR:
-                return new Message.Builder().setType(Message.Type.GET_LEADER_ADDR_REPLY)
-                        .setStatus(Message.Status.OK)
-                        .setMeta(new GetLeaderAddrReply(serverContext.getLeaderAddress())).build();
-
             // Assumes entries are in chronological order.
             case APPEND_ENTRIES_RPC:
 

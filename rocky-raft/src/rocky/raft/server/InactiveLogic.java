@@ -10,6 +10,8 @@ public class InactiveLogic extends BaseLogic {
     InactiveLogic(ServerContext serverContext) {
         super(serverContext);
         LOG_TAG += serverContext.getId();
+
+        serverContext.setLeaderAddress(null);
     }
 
     @Override

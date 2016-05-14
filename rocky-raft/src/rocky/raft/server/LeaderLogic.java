@@ -35,6 +35,7 @@ public class LeaderLogic extends BaseLogic {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 
+        serverContext.setLeaderAddress(serverContext.getAddress());
         clusterSize = Config.SERVERS.size();
         nextIndex = new int[clusterSize];
         matchIndex = new int[clusterSize];
@@ -102,9 +103,12 @@ public class LeaderLogic extends BaseLogic {
     private synchronized LogEntry doPost(String post) throws Exception {
         int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
+        int leaderId = serverContext.getId();
 
         LogEntry entry = new LogEntry(lastIndex + 1, term, post);
         serverContext.getLog().append(entry);
+        nextIndex[leaderId] = lastIndex + 1;
+        matchIndex[leaderId] = lastIndex + 1;
         return entry;
     }
 
@@ -132,9 +136,9 @@ public class LeaderLogic extends BaseLogic {
         TimeoutManager.getInstance().add(LOG_TAG, this::sendHeartbeat, Constants.HEARTBEAT_DELAY);
     }
 
-    private void notifyClients(int oldCommitIndex, int newCommitIndex) {
+    private void notifyClients(int newCommitIndex) {
         for (Integer index : semaphoreMap.keySet()) {
-            if (index > oldCommitIndex && index <= newCommitIndex) {
+            if (index <= newCommitIndex) {
                 semaphoreMap.get(index).release();
             }
         }
@@ -158,7 +162,7 @@ public class LeaderLogic extends BaseLogic {
                 if (entry != null && entry.getTerm() == currentTerm) {
                     LogUtils.debug(LOG_TAG, "Updating commitIndex to " + n);
                     serverContext.setCommitIndex(n);
-                    notifyClients(commitIndex, n);
+                    notifyClients(n);
                     break;
                 }
             }

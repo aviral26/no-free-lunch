@@ -1,6 +1,7 @@
 package rocky.raft.server;
 
 import rocky.raft.common.Constants;
+import rocky.raft.dto.GetLeaderAddrReply;
 import rocky.raft.dto.GetPostsReply;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
@@ -34,6 +35,11 @@ public abstract class BaseLogic implements ServerLogic {
     private Message doProcess(Message message, ServerContext serverContext) throws Exception {
         Message reply = null;
         switch (message.getType()) {
+            case GET_LEADER_ADDR:
+                reply = new Message.Builder().setType(Message.Type.GET_LEADER_ADDR_REPLY)
+                        .setStatus(Message.Status.OK)
+                        .setMeta(new GetLeaderAddrReply(serverContext.getLeaderAddress())).build();
+                break;
             case GET_POSTS:
                 reply = new Message.Builder().setType(Message.Type.GET_POSTS_REPLY)
                         .setStatus(Message.Status.OK)
