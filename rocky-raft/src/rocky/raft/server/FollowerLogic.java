@@ -8,7 +8,7 @@ import rocky.raft.utils.LogUtils;
 
 public class FollowerLogic extends BaseLogic {
 
-    private static String LOG_TAG = "FOLLOWER_LOGIC-";
+    private String LOG_TAG = "FOLLOWER_LOGIC-";
     private TimeoutListener timeoutListener;
 
     FollowerLogic(ServerContext serverContext, TimeoutListener timeoutListener) {

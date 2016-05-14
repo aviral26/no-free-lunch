@@ -9,13 +9,13 @@ import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FileStore<K, V> implements Store<K, V> {
+public class FileStore implements Store {
 
     private static final String LOG_TAG = "FILE_STORE";
 
     private File file;
 
-    private Map<K, V> map = new HashMap<>();
+    private Map<String, String> map = new HashMap<>();
 
     public FileStore(File file) throws IOException {
         if (!file.exists()) {
@@ -40,11 +40,11 @@ public class FileStore<K, V> implements Store<K, V> {
 
     private void readMap() throws IOException {
         Reader reader = null;
-        Type type = new TypeToken<Map<K, V>>() {
+        Type type = new TypeToken<Map<String, String>>() {
         }.getType();
         try {
             reader = new FileReader(file);
-            Map<K, V> map = new Gson().fromJson(reader, type);
+            Map<String, String> map = new Gson().fromJson(reader, type);
             this.map.putAll(map);
         } finally {
             Utils.closeQuietly(reader);
@@ -62,15 +62,15 @@ public class FileStore<K, V> implements Store<K, V> {
     }
 
     @Override
-    public synchronized void put(K key, V value) throws IOException {
-        Map<K, V> clone = new HashMap<>(map);
+    public synchronized void put(String key, String value) throws IOException {
+        Map<String, String> clone = new HashMap<>(map);
         clone.put(key, value);
         writeMap();
         map = clone;
     }
 
     @Override
-    public synchronized V get(K key) {
+    public synchronized String get(String key) {
         return map.get(key);
     }
 }

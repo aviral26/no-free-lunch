@@ -2,9 +2,9 @@ package rocky.raft.store;
 
 import java.io.IOException;
 
-public interface Store<K, V> {
+public interface Store {
 
-    void put(K key, V value) throws IOException;
+    void put(String key, String value) throws IOException;
 
-    V get(K key);
+    String get(String key);
 }

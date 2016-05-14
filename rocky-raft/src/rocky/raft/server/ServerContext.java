@@ -30,7 +30,7 @@ public class ServerContext {
 
     private Address leaderAddress;
 
-    private Store<String, Integer> store;
+    private Store store;
 
     // Persistent
     private int currentTerm;
@@ -48,24 +48,24 @@ public class ServerContext {
         this.id = id;
         this.address = Config.SERVERS.get(id);
         this.leaderAddress = null;
-        this.store = new FileStore<>(new File(STORE_FILE + id));
+        this.store = new FileStore(new File(STORE_FILE + id));
         this.log = new CachedFileLog(new File(LOG_FILE + id));
         this.commitIndex = 0;
         initPersistentVars();
     }
 
     private void initPersistentVars() throws IOException {
-        Integer currentTerm = store.get(CURRENT_TERM_KEY);
+        String currentTerm = store.get(CURRENT_TERM_KEY);
         if (currentTerm == null) {
-            currentTerm = 0;
+            currentTerm = "0";
         }
-        this.currentTerm = currentTerm;
+        this.currentTerm = Integer.valueOf(currentTerm);
 
-        Integer votedFor = store.get(VOTED_FOR_KEY);
+        String votedFor = store.get(VOTED_FOR_KEY);
         if (votedFor == null) {
-            votedFor = -1;
+            votedFor = "-1";
         }
-        this.votedFor = votedFor;
+        this.votedFor = Integer.valueOf(votedFor);
     }
 
     public int getId() {
@@ -90,7 +90,7 @@ public class ServerContext {
 
     public void setCurrentTerm(int currentTerm) {
         try {
-            store.put(CURRENT_TERM_KEY, currentTerm);
+            store.put(CURRENT_TERM_KEY, String.valueOf(currentTerm));
             this.currentTerm = currentTerm;
         } catch (IOException e) {
             LogUtils.error(LOG_TAG, "Failed to persist currentTerm", e);
@@ -103,7 +103,7 @@ public class ServerContext {
 
     public void setVotedFor(int votedFor) {
         try {
-            store.put(VOTED_FOR_KEY, votedFor);
+            store.put(VOTED_FOR_KEY, String.valueOf(votedFor));
             this.votedFor = votedFor;
         } catch (IOException e) {
             LogUtils.error(LOG_TAG, "Failed to persist votedFor", e);
