@@ -62,7 +62,7 @@ public class FollowerLogic extends BaseLogic {
                     }
 
                     if (appendEntriesRpc.getLeaderCommit() > serverContext.getCommitIndex()) {
-                        int min = appendEntriesRpc.getLeaderCommit() > log.last().getIndex() ? log.last().getIndex() : appendEntriesRpc.getLeaderCommit();
+                        int min = Math.min(appendEntriesRpc.getLeaderCommit(), serverContext.getLastIndex());
                         serverContext.setCommitIndex(min);
                     }
 
@@ -82,7 +82,7 @@ public class FollowerLogic extends BaseLogic {
                     LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc.getCandidateId());
                     requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, false);
                 } else {
-                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getCurrentTerm() <= requestVoteRpc.getLastLogTerm()) {
+                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && serverContext.getLastIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getCurrentTerm() <= requestVoteRpc.getLastLogTerm()) {
                         LogUtils.debug(LOG_TAG, "Granting vote to candidate: " + requestVoteRpc.getCandidateId());
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 

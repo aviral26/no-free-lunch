@@ -2,6 +2,7 @@ package rocky.raft.server;
 
 import rocky.raft.common.Config;
 import rocky.raft.dto.Address;
+import rocky.raft.dto.LogEntry;
 import rocky.raft.log.CachedFileLog;
 import rocky.raft.log.Log;
 import rocky.raft.store.FileStore;
@@ -119,6 +120,16 @@ public class ServerContext {
 
     public void setCommitIndex(int commitIndex) {
         this.commitIndex = commitIndex;
+    }
+
+    public int getLastIndex() throws IOException {
+        LogEntry last = getLog().last();
+        return last == null ? 0 : last.getIndex();
+    }
+
+    public int getLastTerm() throws IOException {
+        LogEntry last = getLog().last();
+        return last == null ? 0 : last.getTerm();
     }
 
     @Override

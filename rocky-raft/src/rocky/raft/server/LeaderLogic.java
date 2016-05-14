@@ -32,8 +32,7 @@ public class LeaderLogic extends BaseLogic {
         matchIndex = new int[clusterSize];
 
         try {
-            LogEntry entry = serverContext.getLog().last();
-            int index = entry == null ? 0 : entry.getIndex();
+            int index = serverContext.getLastIndex();
 
             for (int i = 0; i < clusterSize; ++i) {
                 nextIndex[i] = index + 1;
@@ -64,11 +63,10 @@ public class LeaderLogic extends BaseLogic {
     }
 
     private void doPost(String post) throws Exception {
-        LogEntry last = serverContext.getLog().last();
-        int currentIndex = last == null ? 0 : last.getIndex();
+        int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
 
-        LogEntry entry = new LogEntry(currentIndex + 1, term, post);
+        LogEntry entry = new LogEntry(lastIndex + 1, term, post);
         serverContext.getLog().append(entry);
     }
 
@@ -101,8 +99,7 @@ public class LeaderLogic extends BaseLogic {
     }
 
     private void doSendHeartbeat(int followerId) throws Exception {
-        LogEntry last = serverContext.getLog().last();
-        int index = last == null ? 0 : last.getIndex();
+        int index = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
         int id = serverContext.getId();
         int commitIndex = serverContext.getCommitIndex();
@@ -144,8 +141,7 @@ public class LeaderLogic extends BaseLogic {
 
     private void updateCommitIndex(ServerContext serverContext) throws IOException {
         Log log = serverContext.getLog();
-        LogEntry last = log.last();
-        int lastIndex = last == null ? 0 : last.getIndex();
+        int lastIndex = serverContext.getLastIndex();
         int commitIndex = serverContext.getCommitIndex();
         int currentTerm = serverContext.getCurrentTerm();
 
