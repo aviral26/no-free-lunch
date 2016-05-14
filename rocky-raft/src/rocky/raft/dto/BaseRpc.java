@@ -2,7 +2,7 @@ package rocky.raft.dto;
 
 public class BaseRpc {
 
-    private int term;
+    protected int term;
 
     public int getTerm() {
         return term;

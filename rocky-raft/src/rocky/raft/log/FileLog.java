@@ -5,6 +5,7 @@ import rocky.raft.dto.LogEntry;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,14 +47,26 @@ public class FileLog implements Log {
 
     @Override
     public List<LogEntry> getAll() throws IOException {
+        return getAll(0);
+    }
+
+    @Override
+    public List<LogEntry> getAll(int fromIndex) throws IOException {
         Gson gson = new Gson();
         List<LogEntry> logEntryList = new ArrayList<>();
 
-        queueFile.forEach((in, length) -> {
-            byte[] data = new byte[length];
-            in.read(data, 0, length);
-            logEntryList.add(gson.fromJson(new String(data), LogEntry.class));
-            return true;
+        queueFile.forEach(new QueueFile.ElementVisitor() {
+            int current = -1;
+
+            @Override
+            public boolean read(InputStream in, int length) throws IOException {
+                if (++current >= fromIndex) {
+                    byte[] data = new byte[length];
+                    in.read(data, 0, length);
+                    logEntryList.add(gson.fromJson(new String(data), LogEntry.class));
+                }
+                return true;
+            }
         });
         return logEntryList;
     }
