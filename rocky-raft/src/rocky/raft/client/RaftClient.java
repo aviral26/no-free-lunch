@@ -2,7 +2,7 @@ package rocky.raft.client;
 
 import rocky.raft.dto.*;
 import rocky.raft.utils.LogUtils;
-import rocky.raft.utils.Utils;
+import rocky.raft.utils.NetworkUtils;
 
 import java.net.Socket;
 import java.util.List;
@@ -21,10 +21,9 @@ public class RaftClient implements Client {
         for (Address address : servers) {
             try {
                 Socket socket = new Socket(address.getIp(), address.getClientPort());
-                Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.GET_LEADER_ADDR).build());
-
-                Message reply = (Message) Utils.getOis(socket).readObject();
-                Utils.closeQuietly(socket);
+                NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.GET_LEADER_ADDR).build());
+                Message reply = NetworkUtils.readMessage(socket);
+                NetworkUtils.closeQuietly(socket);
 
                 if (reply.getStatus() == Message.Status.OK) {
                     Address leaderAddress = ((GetLeaderAddrReply) reply.getMeta()).getLeaderAddress();
@@ -48,10 +47,9 @@ public class RaftClient implements Client {
     @Override
     public List<String> lookup(Address address) throws Exception {
         Socket socket = new Socket(address.getIp(), address.getClientPort());
-        Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.GET_POSTS).build());
-
-        Message reply = (Message) Utils.getOis(socket).readObject();
-        Utils.closeQuietly(socket);
+        NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.GET_POSTS).build());
+        Message reply = NetworkUtils.readMessage(socket);
+        NetworkUtils.closeQuietly(socket);
 
         if (reply.getStatus() == Message.Status.OK) {
             return ((GetPostsReply) reply.getMeta()).getPosts();
@@ -64,12 +62,10 @@ public class RaftClient implements Client {
     public void post(String message) throws Exception {
         Address leaderAddress = findLeader();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
-
-        Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.DO_POST)
+        NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.DO_POST)
                 .setMeta(new DoPost(message)).build());
-
-        Message reply = (Message) Utils.getOis(socket).readObject();
-        Utils.closeQuietly(socket);
+        Message reply = NetworkUtils.readMessage(socket);
+        NetworkUtils.closeQuietly(socket);
 
         if (reply.getStatus() != Message.Status.OK) {
             throw new Exception("Failed to post " + message);

@@ -6,9 +6,9 @@ import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.Message;
 import rocky.raft.dto.RequestVoteRpc;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.NetworkUtils;
 import rocky.raft.utils.Utils;
 
-import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 public class CandidateLogic extends BaseLogic {
@@ -79,13 +79,10 @@ public class CandidateLogic extends BaseLogic {
         @Override
         public void run() {
             Socket socket = null;
-            ObjectOutputStream objectOutputStream = null;
 
             try {
                 socket = new Socket(Config.SERVERS.get(sendTo).getIp(), Config.SERVERS.get(sendTo).getServerPort());
-
-                objectOutputStream = Utils.getOos(socket);
-                objectOutputStream.writeObject(new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC)
+                NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC)
                         .setMeta(new RequestVoteRpc(serverContext.getCurrentTerm(), serverContext.getId(), serverContext.getLastIndex(), serverContext.getLastTerm())).build());
 
                 // TODO We should not close the socket immediately after writing. We need to wait until the receiver has finished reading.
@@ -94,10 +91,8 @@ public class CandidateLogic extends BaseLogic {
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));
             } finally {
-                Utils.closeQuietly(objectOutputStream);
-                Utils.closeQuietly(socket);
+                NetworkUtils.closeQuietly(socket);
             }
-
         }
     }
 }

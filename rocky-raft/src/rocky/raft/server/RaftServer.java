@@ -4,11 +4,10 @@ import rocky.raft.common.ServerState;
 import rocky.raft.dto.BaseRpc;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.NetworkUtils;
 import rocky.raft.utils.Utils;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -77,14 +76,10 @@ public class RaftServer implements Server {
 
     private void handleClient(Socket socket) {
         Runnable runnable = () -> {
-            ObjectInputStream ois = null;
-            ObjectOutputStream oos = null;
             Message reply = null;
 
             try {
-                ois = Utils.getOis(socket);
-                Message message = (Message) ois.readObject();
-                LogUtils.debug(LOG_TAG, "Received message from client " + message);
+                Message message = NetworkUtils.readMessage(socket);
 
                 // A message from a client cannot cause the server to change state, so invoke ServerLogic directly.
                 reply = serverLogic.process(message);
@@ -97,14 +92,11 @@ public class RaftServer implements Server {
             }
 
             try {
-                oos = Utils.getOos(socket);
-                oos.writeObject(reply);
+                NetworkUtils.writeMessage(socket, reply);
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went really really wrong while handling client. Client not notified of failure.", e);
             } finally {
-                Utils.closeQuietly(ois);
-                Utils.closeQuietly(oos);
-                Utils.closeQuietly(socket);
+                NetworkUtils.closeQuietly(socket);
             }
         };
 
@@ -128,13 +120,10 @@ public class RaftServer implements Server {
 
     private void handleServer(Socket socket) {
         Runnable runnable = () -> {
-            ObjectInputStream ois = null;
-            ObjectOutputStream oos = null;
             Message reply = null;
 
             try {
-                ois = Utils.getOis(socket);
-                Message message = (Message) ois.readObject();
+                Message message = NetworkUtils.readMessage(socket);
                 reply = processServerMessage(message);
                 if (reply == null) {
                     throw new NullPointerException("Got null reply from serverLogic");
@@ -145,14 +134,11 @@ public class RaftServer implements Server {
             }
 
             try {
-                oos = Utils.getOos(socket);
-                oos.writeObject(reply);
+                NetworkUtils.writeMessage(socket, reply);
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went really really wrong while handling server. Server not notified of failure.", e);
             } finally {
-                Utils.closeQuietly(ois);
-                Utils.closeQuietly(oos);
-                Utils.closeQuietly(socket);
+                NetworkUtils.closeQuietly(socket);
             }
         };
 

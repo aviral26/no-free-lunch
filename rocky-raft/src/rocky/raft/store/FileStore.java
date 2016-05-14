@@ -2,7 +2,7 @@ package rocky.raft.store;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import rocky.raft.utils.Utils;
+import rocky.raft.utils.NetworkUtils;
 
 import java.io.*;
 import java.lang.reflect.Type;
@@ -47,7 +47,7 @@ public class FileStore implements Store {
             Map<String, String> map = new Gson().fromJson(reader, type);
             this.map.putAll(map);
         } finally {
-            Utils.closeQuietly(reader);
+            NetworkUtils.closeQuietly(reader);
         }
     }
 
@@ -57,7 +57,7 @@ public class FileStore implements Store {
             writer = new FileWriter(file);
             writer.write(new Gson().toJson(map));
         } finally {
-            Utils.closeQuietly(writer);
+            NetworkUtils.closeQuietly(writer);
         }
     }
 

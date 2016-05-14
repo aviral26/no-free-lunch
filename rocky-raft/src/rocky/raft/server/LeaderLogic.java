@@ -6,7 +6,7 @@ import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
 import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
-import rocky.raft.utils.Utils;
+import rocky.raft.utils.NetworkUtils;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -163,10 +163,10 @@ public class LeaderLogic extends BaseLogic {
                         .setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex)).build();
 
                 // Send AppendEntriesRpc
-                Utils.getOos(socket).writeObject(message);
+                NetworkUtils.writeMessage(socket, message);
 
                 // Get AppendEntriesRpcReply
-                Message reply = (Message) Utils.getOis(socket).readObject();
+                Message reply = NetworkUtils.readMessage(socket);
                 if (reply.getStatus() != Message.Status.OK) {
                     throw new Exception("Received error message from follower(" + followerId + "): " + reply);
                 }
@@ -181,7 +181,7 @@ public class LeaderLogic extends BaseLogic {
                 }
 
                 // Close connection
-                Utils.closeQuietly(socket);
+                NetworkUtils.closeQuietly(socket);
             }
         }
     }

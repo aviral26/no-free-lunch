@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class LogUtils {
 
-    private static final String LOG_PREFIX = "[rocky-raft] ";
+    private static final String LOG_PREFIX = "rocky-raft";
 
     private static LogLevel LOG_LEVEL = LogLevel.DEBUG;
 
@@ -100,7 +100,9 @@ public class LogUtils {
                 break;
             }
         }
-        return String.format(Locale.US, "%s %s: %s ", LOG_PREFIX, tag, caller);
+
+        String threadName = Thread.currentThread().getName();
+        return String.format(Locale.US, "[%s] [%s] %s: %s ", LOG_PREFIX, threadName, tag, caller);
     }
 
     private static class NoOpLogger implements Logger {
