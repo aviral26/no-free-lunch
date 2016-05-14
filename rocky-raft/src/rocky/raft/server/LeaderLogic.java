@@ -26,7 +26,7 @@ public class LeaderLogic extends BaseLogic {
 
     private int[] matchIndex;
 
-    public LeaderLogic(ServerContext serverContext) throws IOException {
+    public LeaderLogic(ServerContext serverContext) {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 

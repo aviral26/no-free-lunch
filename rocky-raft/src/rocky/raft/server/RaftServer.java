@@ -53,11 +53,7 @@ public class RaftServer implements Server {
                 serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
             case LEADER:
-                try {
-                    serverLogic = new LeaderLogic(serverContext);
-                } catch (IOException e) {
-                    LogUtils.error(LOG_TAG, "Failed to update to leader state.", e);
-                }
+                serverLogic = new LeaderLogic(serverContext);
                 break;
             default:
                 LogUtils.debug(LOG_TAG, "Failed to update to unknown state.");
