@@ -54,12 +54,28 @@ public class LeaderLogic extends BaseLogic {
 
     @Override
     protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
+        switch (message.getMessageType()) {
+            case DO_POST:
+                doPost(message.getMessage());
+                Message reply = new Message(Message.Sender.SERVER, Message.Type.DO_POST);
+                reply.setStatus(Message.Status.OK);
+                return reply;
+        }
         return null;
     }
 
     @Override
     protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
         return null;
+    }
+
+    private void doPost(String message) throws Exception {
+        LogEntry last = serverContext.getLog().last();
+        int currentIndex = last == null ? 0 : last.getIndex();
+        int term = serverContext.getCurrentTerm();
+
+        LogEntry entry = new LogEntry(currentIndex + 1, term, message);
+        serverContext.getLog().append(entry);
     }
 
     private void sendHeartbeat() {
