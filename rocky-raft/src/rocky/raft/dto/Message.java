@@ -6,79 +6,85 @@ public class Message implements Serializable {
 
     public enum Type {
         GET_LEADER_ADDR,
-        LEADER_ADDR,
+        GET_LEADER_ADDR_REPLY,
         DO_POST,
+        DO_POST_REPLY,
         GET_POSTS,
-        POSTS,
+        GET_POSTS_REPLY,
         APPEND_ENTRIES_RPC,
-        REQUEST_VOTE_RPC,
         APPEND_ENTRIES_RPC_REPLY,
-        REQUEST_VOTE_RPC_REPLY,
-        ERROR
-    }
-
-    public enum Sender {
-        SERVER,
-        CLIENT
+        REQUEST_VOTE_RPC,
+        REQUEST_VOTE_RPC_REPLY
     }
 
     public enum Status {
         OK,
-        FAIL
+        ERROR
     }
 
-    private Type messageType;
-
-    private Sender sender;
+    private Type type;
 
     private Status status;
 
-    private String message;
+    private Meta meta;
 
-    public Message(Sender sender, Type messageType) {
-        this.sender = sender;
-        this.messageType = messageType;
+    private Message() {
+
     }
 
-    public Type getMessageType() {
-        return messageType;
+    private Message(Type type, Status status, Meta meta) {
+        this.type = type;
+        this.status = status;
+        this.meta = meta;
     }
 
-    public void setMessageType(Type messageType) {
-        this.messageType = messageType;
-    }
-
-    public Sender getSender() {
-        return sender;
-    }
-
-    public void setSender(Sender sender) {
-        this.sender = sender;
+    public Type getType() {
+        return type;
     }
 
     public Status getStatus() {
         return status;
     }
 
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
+    public Meta getMeta() {
+        return meta;
     }
 
     @Override
     public String toString() {
         return "Message{" +
-                "messageType=" + messageType +
-                ", sender=" + sender +
+                "type=" + type +
                 ", status=" + status +
-                ", message='" + message + '\'' +
+                ", meta=" + meta +
                 '}';
+    }
+
+    public static class Meta implements Serializable {
+
+    }
+
+    public static class Builder {
+        private Message.Type type;
+        private Message.Status status;
+        private Meta meta;
+
+        public Builder setType(Message.Type type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder setStatus(Message.Status status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder setMeta(Meta meta) {
+            this.meta = meta;
+            return this;
+        }
+
+        public Message build() {
+            return new Message(type, status, meta);
+        }
     }
 }

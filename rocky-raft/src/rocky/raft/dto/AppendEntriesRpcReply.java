@@ -4,11 +4,20 @@ public class AppendEntriesRpcReply extends BaseRpc {
 
     private boolean success;
 
+    public AppendEntriesRpcReply(int term, boolean success) {
+        super(term);
+        this.success = success;
+    }
+
     public boolean isSuccess() {
         return success;
     }
 
-    public void setSuccess(boolean success) {
-        this.success = success;
+    @Override
+    public String toString() {
+        return "AppendEntriesRpcReply{" +
+                "term=" + term +
+                ", success=" + success +
+                '}';
     }
 }

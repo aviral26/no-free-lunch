@@ -1,1 +1,3 @@
 .idea
+raft-store*
+raft-log*

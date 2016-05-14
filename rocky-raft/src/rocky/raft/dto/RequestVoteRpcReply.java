@@ -5,11 +5,20 @@ public class RequestVoteRpcReply extends BaseRpc {
 
     private boolean voteGranted;
 
+    public RequestVoteRpcReply(int term, boolean voteGranted) {
+        super(term);
+        this.voteGranted = voteGranted;
+    }
+
     public boolean isVoteGranted() {
         return voteGranted;
     }
 
-    public void setVoteGranted(boolean voteGranted) {
-        this.voteGranted = voteGranted;
+    @Override
+    public String toString() {
+        return "RequestVoteRpcReply{" +
+                "term=" + term +
+                ", voteGranted=" + voteGranted +
+                '}';
     }
 }

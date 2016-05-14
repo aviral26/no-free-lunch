@@ -1,8 +1,6 @@
 package rocky.raft.client;
 
-import com.google.gson.Gson;
-import rocky.raft.dto.Address;
-import rocky.raft.dto.Message;
+import rocky.raft.dto.*;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
 
@@ -23,13 +21,13 @@ public class RaftClient implements Client {
         for (Address address : servers) {
             try {
                 Socket socket = new Socket(address.getIp(), address.getClientPort());
-                Utils.getOos(socket).writeObject(new Message(Message.Sender.CLIENT, Message.Type.GET_LEADER_ADDR));
+                Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.GET_LEADER_ADDR).build());
 
-                Message msg = (Message) Utils.getOis(socket).readObject();
+                Message reply = (Message) Utils.getOis(socket).readObject();
                 Utils.closeQuietly(socket);
 
-                if (msg.getStatus() == Message.Status.OK) {
-                    Address leaderAddress = new Gson().fromJson(msg.getMessage(), Address.class);
+                if (reply.getStatus() == Message.Status.OK) {
+                    Address leaderAddress = ((GetLeaderAddrReply) reply.getMeta()).getLeaderAddress();
                     LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
                     return leaderAddress;
                 }
@@ -50,15 +48,15 @@ public class RaftClient implements Client {
     @Override
     public List<String> lookup(Address address) throws Exception {
         Socket socket = new Socket(address.getIp(), address.getClientPort());
-        Utils.getOos(socket).writeObject(new Message(Message.Sender.CLIENT, Message.Type.GET_POSTS));
+        Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.GET_POSTS).build());
 
-        Message message = (Message) Utils.getOis(socket).readObject();
+        Message reply = (Message) Utils.getOis(socket).readObject();
         Utils.closeQuietly(socket);
 
-        if (message.getStatus() == Message.Status.OK) {
-            return new Gson().fromJson(message.getMessage(), List.class);
+        if (reply.getStatus() == Message.Status.OK) {
+            return ((GetPostsReply) reply.getMeta()).getPosts();
         }
-        LogUtils.debug(LOG_TAG, "Failed to get posts: " + message);
+        LogUtils.debug(LOG_TAG, "Failed to get posts: " + reply);
         return null;
     }
 
@@ -67,15 +65,13 @@ public class RaftClient implements Client {
         Address leaderAddress = findLeader();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
 
-        Message msg = new Message(Message.Sender.CLIENT, Message.Type.DO_POST);
-        msg.setMessage(message);
+        Utils.getOos(socket).writeObject(new Message.Builder().setType(Message.Type.DO_POST)
+                .setMeta(new DoPost(message)).build());
 
-        Utils.getOos(socket).writeObject(msg);
-
-        Message response = (Message) Utils.getOis(socket).readObject();
+        Message reply = (Message) Utils.getOis(socket).readObject();
         Utils.closeQuietly(socket);
 
-        if (response.getStatus() != Message.Status.OK) {
+        if (reply.getStatus() != Message.Status.OK) {
             throw new Exception("Failed to post " + message);
         }
     }

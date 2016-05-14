@@ -13,17 +13,10 @@ public class InactiveLogic extends BaseLogic {
     }
 
     @Override
-    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
+    protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
         LogUtils.debug(LOG_TAG, "Do nothing");
         return null;
     }
-
-    @Override
-    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
-        LogUtils.debug(LOG_TAG, "Do nothing");
-        return null;
-    }
-
 
     @Override
     public void release() {

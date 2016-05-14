@@ -1,11 +1,9 @@
 package rocky.raft.server;
 
-import com.google.gson.Gson;
 import rocky.raft.common.ServerState;
 import rocky.raft.dto.BaseRpc;
 import rocky.raft.dto.Message;
 import rocky.raft.utils.LogUtils;
-import rocky.raft.utils.MessageUtils;
 import rocky.raft.utils.Utils;
 
 import java.io.IOException;
@@ -99,7 +97,7 @@ public class RaftServer implements Server {
                 }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went wrong while handling client. Notifying client...", e);
-                reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.toString());
+                reply = new Message.Builder().setStatus(Message.Status.ERROR).build();
             }
 
             try {
@@ -147,7 +145,7 @@ public class RaftServer implements Server {
                 }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Something went wrong while handling server. Notifying server...", e);
-                reply = MessageUtils.createFailMsg(Message.Sender.SERVER, e.getMessage());
+                reply = new Message.Builder().setStatus(Message.Status.ERROR).build();
             }
 
             try {
@@ -166,10 +164,10 @@ public class RaftServer implements Server {
     }
 
     private Message processServerMessage(Message message) throws Exception {
-        BaseRpc baseRpc = new Gson().fromJson(message.getMessage(), BaseRpc.class);
+        BaseRpc baseRpc = (BaseRpc) message.getMeta();
         boolean updateToFollower = false;
 
-        switch (message.getMessageType()) {
+        switch (message.getType()) {
             case APPEND_ENTRIES_RPC:
             case APPEND_ENTRIES_RPC_REPLY:
                 updateToFollower = baseRpc.getTerm() >= serverContext.getCurrentTerm();

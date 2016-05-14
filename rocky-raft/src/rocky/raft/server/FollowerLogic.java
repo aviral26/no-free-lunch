@@ -1,6 +1,5 @@
 package rocky.raft.server;
 
-import com.google.gson.Gson;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
@@ -27,29 +26,16 @@ public class FollowerLogic extends BaseLogic {
     }
 
     @Override
-    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
-        Message reply;
-
-        switch (message.getMessageType()) {
-            case GET_LEADER_ADDR:
-                reply = new Message(Message.Sender.SERVER, Message.Type.LEADER_ADDR);
-                reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(serverContext.getLeaderAddress()));
-                return reply;
-
-            default:
-                LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null");
-        }
-        return null;
-    }
-
-    @Override
-    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
-        Message reply;
+    protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
         Log log = serverContext.getLog();
         int currentTerm = serverContext.getCurrentTerm();
 
-        switch (message.getMessageType()) {
+        switch (message.getType()) {
+
+            case GET_LEADER_ADDR:
+                return new Message.Builder().setType(Message.Type.GET_LEADER_ADDR_REPLY)
+                        .setStatus(Message.Status.OK)
+                        .setMeta(new GetLeaderAddrReply(serverContext.getLeaderAddress())).build();
 
             // Assumes entries are in chronological order.
             case APPEND_ENTRIES_RPC:
@@ -57,13 +43,12 @@ public class FollowerLogic extends BaseLogic {
                 // Heartbeat received. Reset time out thread.
                 TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
 
-                AppendEntriesRpc appendEntriesRpc = new Gson().fromJson(message.getMessage(), AppendEntriesRpc.class);
-                AppendEntriesRpcReply appendEntriesRpcReply = new AppendEntriesRpcReply();
+                AppendEntriesRpc appendEntriesRpc = (AppendEntriesRpc) message.getMeta();
+                AppendEntriesRpcReply appendEntriesRpcReply;
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
 
                 if ((currentTerm > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
-                    appendEntriesRpcReply.setSuccess(false);
-                    appendEntriesRpcReply.setTerm(currentTerm);
+                    appendEntriesRpcReply = new AppendEntriesRpcReply(currentTerm, false);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
                 } else {
                     for (LogEntry entry : appendEntriesRpc.getEntries()) {
@@ -81,25 +66,21 @@ public class FollowerLogic extends BaseLogic {
                         serverContext.setCommitIndex(min);
                     }
 
-                    appendEntriesRpcReply.setSuccess(true);
-                    appendEntriesRpcReply.setTerm(currentTerm);
+                    appendEntriesRpcReply = new AppendEntriesRpcReply(currentTerm, true);
                     LogUtils.debug(LOG_TAG, "Replying true to AppendEntriesRPC.");
                 }
 
-                reply = new Message(Message.Sender.SERVER, Message.Type.APPEND_ENTRIES_RPC_REPLY);
-                reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(appendEntriesRpcReply));
-
-                return reply;
+                return new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC_REPLY)
+                        .setStatus(Message.Status.OK)
+                        .setMeta(appendEntriesRpcReply).build();
 
             case REQUEST_VOTE_RPC:
-                RequestVoteRpc requestVoteRpc = new Gson().fromJson(message.getMessage(), RequestVoteRpc.class);
-                RequestVoteRpcReply requestVoteRpcReply = new RequestVoteRpcReply();
+                RequestVoteRpc requestVoteRpc = (RequestVoteRpc) message.getMeta();
+                RequestVoteRpcReply requestVoteRpcReply;
 
                 if (requestVoteRpc.getTerm() < currentTerm) {
                     LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc.getCandidateId());
-                    requestVoteRpcReply.setTerm(currentTerm);
-                    requestVoteRpcReply.setVoteGranted(false);
+                    requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, false);
                 } else {
                     if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && log.last().getIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getCurrentTerm() <= requestVoteRpc.getLastLogTerm()) {
                         LogUtils.debug(LOG_TAG, "Granting vote to candidate: " + requestVoteRpc.getCandidateId());
@@ -107,21 +88,16 @@ public class FollowerLogic extends BaseLogic {
 
                         // Reset timeout thread.
                         TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
-                        requestVoteRpcReply.setTerm(currentTerm);
-                        requestVoteRpcReply.setVoteGranted(true);
+                        requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, true);
                     } else {
-                        LogUtils.debug(LOG_TAG, "My log is more updated. Not granting vote to candidate " +
-                                requestVoteRpc.getCandidateId());
-                        requestVoteRpcReply.setTerm(currentTerm);
-                        requestVoteRpcReply.setVoteGranted(false);
+                        LogUtils.debug(LOG_TAG, "My log is more updated. Not granting vote to candidate " + requestVoteRpc.getCandidateId());
+                        requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, false);
                     }
                 }
 
-                reply = new Message(Message.Sender.SERVER, Message.Type.REQUEST_VOTE_RPC_REPLY);
-                reply.setStatus(Message.Status.OK);
-                reply.setMessage(new Gson().toJson(requestVoteRpcReply));
-
-                return reply;
+                return new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC_REPLY)
+                        .setStatus(Message.Status.OK)
+                        .setMeta(requestVoteRpcReply).build();
 
             default:
                 LogUtils.error(LOG_TAG, "Unrecognised message type received from server. Returning null. ");

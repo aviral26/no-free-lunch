@@ -1,9 +1,9 @@
 package rocky.raft.server;
 
-import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
+import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
 import rocky.raft.dto.RequestVoteRpc;
 import rocky.raft.utils.LogUtils;
@@ -50,22 +50,12 @@ public class CandidateLogic extends BaseLogic {
     }
 
     @Override
-    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
-        switch (message.getMessageType()) {
+    protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
+        switch (message.getType()) {
 
             case GET_LEADER_ADDR:
                 LogUtils.debug(LOG_TAG, "Leader not elected yet. Returning null.");
                 return null;
-
-            default:
-                LogUtils.error(LOG_TAG, "Unrecognised message type received from a client. Returning null.");
-        }
-        return null;
-    }
-
-    @Override
-    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
-        switch (message.getMessageType()) {
 
             case REQUEST_VOTE_RPC:
                 // TODO Must be same or lesser term. Not granting vote.
@@ -74,7 +64,7 @@ public class CandidateLogic extends BaseLogic {
                 // TODO If term is same, increment voteCount else do nothing.
 
             default:
-                LogUtils.error(LOG_TAG, "Not an election message. Returning null. ");
+                LogUtils.error(LOG_TAG, "Unknown message. Returning null.");
         }
         return null;
     }
@@ -94,17 +84,14 @@ public class CandidateLogic extends BaseLogic {
 
             try {
                 socket = new Socket(Config.SERVERS.get(sendTo).getIp(), Config.SERVERS.get(sendTo).getServerPort());
-                Message voteRequest = new Message(Message.Sender.SERVER, Message.Type.REQUEST_VOTE_RPC);
-                RequestVoteRpc requestVoteRpc = new RequestVoteRpc();
 
-                requestVoteRpc.setTerm(serverContext.getCurrentTerm());
-                requestVoteRpc.setCandidateId(serverContext.getId());
-                requestVoteRpc.setLastLogIndex(serverContext.getLog().last().getIndex());
-                requestVoteRpc.setLastLogTerm(serverContext.getLog().last().getTerm());
+                LogEntry last = serverContext.getLog().last();
+                int lastIndex = last == null ? 0 : last.getIndex();
+                int lastTerm = last == null ? 0 : last.getTerm();
 
-                voteRequest.setMessage(new Gson().toJson(requestVoteRpc));
                 objectOutputStream = Utils.getOos(socket);
-                objectOutputStream.writeObject(voteRequest);
+                objectOutputStream.writeObject(new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC)
+                        .setMeta(new RequestVoteRpc(serverContext.getCurrentTerm(), serverContext.getId(), lastIndex, lastTerm)).build());
 
                 // TODO We should not close the socket immediately after writing. We need to wait until the receiver has finished reading.
 

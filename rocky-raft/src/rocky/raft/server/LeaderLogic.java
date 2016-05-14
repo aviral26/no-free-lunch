@@ -1,6 +1,5 @@
 package rocky.raft.server;
 
-import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.Constants;
 import rocky.raft.common.TimeoutListener;
@@ -53,28 +52,23 @@ public class LeaderLogic extends BaseLogic {
     }
 
     @Override
-    protected Message handleClient(Message message, ServerContext serverContext) throws Exception {
-        switch (message.getMessageType()) {
+    protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
+        switch (message.getType()) {
             case DO_POST:
-                doPost(message.getMessage());
-                Message reply = new Message(Message.Sender.SERVER, Message.Type.DO_POST);
-                reply.setStatus(Message.Status.OK);
-                return reply;
+                String post = ((DoPost) message.getMeta()).getPost();
+                doPost(post);
+                return new Message.Builder().setType(Message.Type.DO_POST)
+                        .setStatus(Message.Status.OK).build();
         }
         return null;
     }
 
-    @Override
-    protected Message handleServer(Message message, ServerContext serverContext) throws Exception {
-        return null;
-    }
-
-    private void doPost(String message) throws Exception {
+    private void doPost(String post) throws Exception {
         LogEntry last = serverContext.getLog().last();
         int currentIndex = last == null ? 0 : last.getIndex();
         int term = serverContext.getCurrentTerm();
 
-        LogEntry entry = new LogEntry(currentIndex + 1, term, message);
+        LogEntry entry = new LogEntry(currentIndex + 1, term, post);
         serverContext.getLog().append(entry);
     }
 
@@ -118,19 +112,12 @@ public class LeaderLogic extends BaseLogic {
             Socket socket = new Socket(address.getIp(), address.getServerPort());
 
             // Prepare message
-            Message message = new Message(Message.Sender.SERVER, Message.Type.APPEND_ENTRIES_RPC);
             int prevLogIndex = nextIndex[followerId] - 1;
             LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
             List<LogEntry> entries = serverContext.getLog().getAll(nextIndex[followerId]);
-            AppendEntriesRpc appendEntriesRpc = new AppendEntriesRpc.Builder()
-                    .setTerm(term)
-                    .setLeaderId(id)
-                    .setPrevLogIndex(prevLogIndex)
-                    .setPrevLogTerm(prevLogTerm)
-                    .setEntries(entries)
-                    .setLeaderCommit(commitIndex).build();
-            message.setMessage(new Gson().toJson(appendEntriesRpc));
+            Message message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC)
+                    .setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex)).build();
 
             // Send AppendEntriesRpc
             Utils.getOos(socket).writeObject(message);
@@ -142,7 +129,7 @@ public class LeaderLogic extends BaseLogic {
             }
 
             // Process reply
-            AppendEntriesRpcReply appendEntriesRpcReply = new Gson().fromJson(reply.getMessage(), AppendEntriesRpcReply.class);
+            AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
             if (appendEntriesRpcReply.isSuccess()) {
                 nextIndex[followerId] = index;
                 matchIndex[followerId] = index;
