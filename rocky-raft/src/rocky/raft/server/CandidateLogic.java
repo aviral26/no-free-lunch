@@ -82,10 +82,15 @@ public class CandidateLogic extends BaseLogic {
                 return null;
 
             case REQUEST_VOTE_RPC:
-                // TODO Must be same or lesser term. Not granting vote.
+                // Must be same or lesser term. Not granting vote.
+                LogUtils.debug(LOG_TAG, "Received vote request for term " + ((RequestVoteRpc) message.getMeta()).getTerm() + ". Not granting vote.");
+                return new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC_REPLY).setStatus(Message.Status
+                        .OK).setMeta(new RequestVoteRpcReply(serverContext.getCurrentTerm(), false)).build();
 
             case REQUEST_VOTE_RPC_REPLY:
-                // TODO If term is same, increment voteCount else do nothing.
+                // Either these are from current term, in which case a majority should have been handled, or lesser
+                // term. Can safely ignore.
+                LogUtils.debug(LOG_TAG, "Received vote request reply for term " + ((RequestVoteRpc) message.getMeta()).getTerm() + ". Ignoring message.");
 
             default:
                 LogUtils.error(LOG_TAG, "Unknown message. Returning null.");

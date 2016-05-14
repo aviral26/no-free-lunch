@@ -77,10 +77,11 @@ public class LeaderLogic extends BaseLogic {
 
         LogEntry entry = new LogEntry(lastIndex + 1, term, post);
         serverContext.getLog().append(entry);
+        // TODO Block here till the post is replicated sufficiently - check commitIndex
     }
 
     private void sendHeartbeat() {
-        // Terminate previous hearbeats
+        // Terminate previous heartbeats
         resetHeartbeatExecutor();
 
         // Send new heartbeats
