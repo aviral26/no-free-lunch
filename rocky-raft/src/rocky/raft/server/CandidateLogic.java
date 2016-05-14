@@ -5,47 +5,72 @@ import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.Message;
 import rocky.raft.dto.RequestVoteRpc;
+import rocky.raft.dto.RequestVoteRpcReply;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.NetworkUtils;
-import rocky.raft.utils.Utils;
 
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class CandidateLogic extends BaseLogic {
 
+    public interface OnMajorityReachedListener {
+        void onMajorityReached();
+    }
+
     private String LOG_TAG = "CANDIDATE_LOGIC-";
+    private ExecutorService voteExecutor;
     private TimeoutListener timeoutListener;
+    private OnMajorityReachedListener onMajorityReachedListener;
+    private int clusterSize;
     private int voteCount;
 
-    CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener) {
+    CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener, OnMajorityReachedListener onMajorityReachedListener) {
         super(serverContext);
         LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
+        this.onMajorityReachedListener = onMajorityReachedListener;
+        this.clusterSize = Config.SERVERS.size();
         this.voteCount = 0;
         serverContext.setLeaderAddress(null);
+
+        resetVoteExecutor();
 
         // Increment term, start election, vote for myself and set timeout thread.
         startElectionAndSetTimeout();
     }
 
+    private void resetVoteExecutor() {
+        if (voteExecutor != null) voteExecutor.shutdownNow();
+        voteExecutor = Executors.newFixedThreadPool(clusterSize - 1);
+    }
 
     private void startElectionAndSetTimeout() {
         serverContext.setCurrentTerm(serverContext.getCurrentTerm() + 1);
 
         for (int i = 0; i < Config.SERVERS.size(); i++) {
-            if (i == serverContext.getId())
-                voteCount++;
-            else
-                Utils.startThread(LOG_TAG + "-vote-request", new SendVoteRequest(i));
+            if (i == serverContext.getId()) {
+                incrementVoteCount();
+            } else {
+                voteExecutor.submit(new SendVoteRequest(i));
+            }
         }
 
         TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
     }
 
+    private synchronized void incrementVoteCount() {
+        voteCount++;
+        if (voteCount > clusterSize / 2) {
+            onMajorityReachedListener.onMajorityReached();
+        }
+    }
 
     @Override
     public void release() {
-        // TODO
+        voteExecutor.shutdownNow();
+        TimeoutManager.getInstance().remove(LOG_TAG);
     }
 
     @Override
@@ -70,9 +95,9 @@ public class CandidateLogic extends BaseLogic {
 
     private class SendVoteRequest implements Runnable {
 
-        int sendTo;
+        private int sendTo;
 
-        SendVoteRequest(int id) {
+        public SendVoteRequest(int id) {
             this.sendTo = id;
         }
 
@@ -84,10 +109,13 @@ public class CandidateLogic extends BaseLogic {
                 socket = new Socket(Config.SERVERS.get(sendTo).getIp(), Config.SERVERS.get(sendTo).getServerPort());
                 NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC)
                         .setMeta(new RequestVoteRpc(serverContext.getCurrentTerm(), serverContext.getId(), serverContext.getLastIndex(), serverContext.getLastTerm())).build());
-
-                // TODO We should not close the socket immediately after writing. We need to wait until the receiver has finished reading.
-
-                LogUtils.debug(LOG_TAG, "Vote request sent to " + Config.SERVERS.get(sendTo));
+                Message reply = NetworkUtils.readMessage(socket);
+                if (reply.getStatus() == Message.Status.OK) {
+                    RequestVoteRpcReply requestVoteRpcReply = (RequestVoteRpcReply) reply.getMeta();
+                    if (requestVoteRpcReply.isVoteGranted()) {
+                        incrementVoteCount();
+                    }
+                }
             } catch (Exception e) {
                 LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));
             } finally {

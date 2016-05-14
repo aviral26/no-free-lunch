@@ -49,7 +49,7 @@ public class RaftServer implements Server {
                 serverLogic = new FollowerLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
                 break;
             case CANDIDATE:
-                serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE));
+                serverLogic = new CandidateLogic(serverContext, () -> updateState(ServerState.CANDIDATE), () -> updateState(ServerState.LEADER));
                 break;
             case LEADER:
                 serverLogic = new LeaderLogic(serverContext);
