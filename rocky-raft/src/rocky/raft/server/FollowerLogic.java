@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import rocky.raft.common.Config;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.*;
@@ -42,6 +43,10 @@ public class FollowerLogic extends BaseLogic {
                 TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
 
                 AppendEntriesRpc appendEntriesRpc = (AppendEntriesRpc) message.getMeta();
+
+                // Update leaderAddress
+                serverContext.setLeaderAddress(Config.SERVERS.get(appendEntriesRpc.getLeaderId()));
+
                 AppendEntriesRpcReply appendEntriesRpcReply;
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
                 int appendEntriesPrevLogTerm = logEntryAtPrevLogIndex == null ? -1 : logEntryAtPrevLogIndex.getTerm();
