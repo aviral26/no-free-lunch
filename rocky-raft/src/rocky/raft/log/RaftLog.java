@@ -6,13 +6,13 @@ import rocky.raft.dto.LogEntry;
 import java.io.File;
 import java.io.IOException;
 
-public class CachedFileLog extends FileLog {
+public class RaftLog extends FileLog {
 
     private LRUCache<Integer, LogEntry> cache = new LRUCache<>(128);
 
     private LogEntry last;
 
-    public CachedFileLog(File file) throws IOException {
+    public RaftLog(File file) throws IOException {
         super(file);
     }
 
@@ -20,7 +20,8 @@ public class CachedFileLog extends FileLog {
     public synchronized void append(LogEntry entry) throws IOException {
         super.append(entry);
         last = entry;
-        cache.put(entry.getIndex(), entry);
+        // LogEntry is 1 indexed. QueueFile is 0 indexed.
+        cache.put(entry.getIndex() - 1, entry);
     }
 
     @Override

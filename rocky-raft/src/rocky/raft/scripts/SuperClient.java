@@ -64,7 +64,7 @@ public class SuperClient {
             client = new RaftClient(Config.SERVERS);
             client.post(message);
         } catch (Exception e) {
-            LogUtils.error(LOG_TAG, "Failed to do lookup", e);
+            LogUtils.error(LOG_TAG, "Failed to do post", e);
         }
     }
 }

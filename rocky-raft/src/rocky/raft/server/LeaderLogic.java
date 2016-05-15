@@ -108,8 +108,7 @@ public class LeaderLogic extends BaseLogic {
 
         LogEntry entry = new LogEntry(lastIndex + 1, term, post);
         serverContext.getLog().append(entry);
-        nextIndex[leaderId] = lastIndex + 1;
-        matchIndex[leaderId] = lastIndex + 1;
+        setNextAndMatchIndex(leaderId, lastIndex + 1);
         return entry;
     }
 
@@ -170,6 +169,11 @@ public class LeaderLogic extends BaseLogic {
         }
     }
 
+    private void setNextAndMatchIndex(int id, int index) {
+        nextIndex[id] = index + 1;
+        matchIndex[id] = index;
+    }
+
     private class SendHearbeatTask implements Runnable {
 
         private int followerId;
@@ -183,7 +187,7 @@ public class LeaderLogic extends BaseLogic {
             try {
                 doSendHeartbeat(followerId);
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId, e);
+                LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId + ": " + e.getMessage());
             }
         }
 
@@ -193,14 +197,14 @@ public class LeaderLogic extends BaseLogic {
             int id = serverContext.getId();
             int commitIndex = serverContext.getCommitIndex();
             int prevLogIndex = nextIndex[followerId] - 1;
-            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
+            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex - 1);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
             List<LogEntry> entries = new ArrayList<>();
             Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
             if (index >= nextIndex[followerId]) {
                 // Prepare message
-                entries = serverContext.getLog().getAll(nextIndex[followerId]);
+                entries = serverContext.getLog().getAll(nextIndex[followerId] - 1);
             }
 
             message.setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex));
@@ -220,8 +224,7 @@ public class LeaderLogic extends BaseLogic {
             // Process reply
             AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
             if (appendEntriesRpcReply.isSuccess()) {
-                nextIndex[followerId] = index;
-                matchIndex[followerId] = index;
+                setNextAndMatchIndex(followerId, index);
             } else {
                 nextIndex[followerId]--;
             }

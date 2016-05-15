@@ -22,7 +22,7 @@ public class FileStore implements Store {
             initialize(file);
         }
         this.file = file;
-        readMap();
+        map = readMap();
     }
 
     private static void initialize(File file) throws IOException {
@@ -38,20 +38,19 @@ public class FileStore implements Store {
         }
     }
 
-    private void readMap() throws IOException {
+    private Map<String, String> readMap() throws IOException {
         Reader reader = null;
         Type type = new TypeToken<Map<String, String>>() {
         }.getType();
         try {
             reader = new FileReader(file);
-            Map<String, String> map = new Gson().fromJson(reader, type);
-            this.map.putAll(map);
+            return new Gson().fromJson(reader, type);
         } finally {
             NetworkUtils.closeQuietly(reader);
         }
     }
 
-    private void writeMap() throws IOException {
+    private void writeMap(Map<String, String> map) throws IOException {
         Writer writer = null;
         try {
             writer = new FileWriter(file);
@@ -65,7 +64,7 @@ public class FileStore implements Store {
     public synchronized void put(String key, String value) throws IOException {
         Map<String, String> clone = new HashMap<>(map);
         clone.put(key, value);
-        writeMap();
+        writeMap(clone);
         map = clone;
     }
 

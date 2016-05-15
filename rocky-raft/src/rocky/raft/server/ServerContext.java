@@ -3,8 +3,8 @@ package rocky.raft.server;
 import rocky.raft.common.Config;
 import rocky.raft.dto.Address;
 import rocky.raft.dto.LogEntry;
-import rocky.raft.log.CachedFileLog;
 import rocky.raft.log.Log;
+import rocky.raft.log.RaftLog;
 import rocky.raft.store.FileStore;
 import rocky.raft.store.Store;
 import rocky.raft.utils.LogUtils;
@@ -49,7 +49,7 @@ public class ServerContext {
         this.address = Config.SERVERS.get(id);
         this.leaderAddress = null;
         this.store = new FileStore(new File(STORE_FILE + id));
-        this.log = new CachedFileLog(new File(LOG_FILE + id));
+        this.log = new RaftLog(new File(LOG_FILE + id));
         this.commitIndex = 0;
         initPersistentVars();
     }
@@ -84,11 +84,11 @@ public class ServerContext {
         this.leaderAddress = leaderAddress;
     }
 
-    public int getCurrentTerm() {
+    public synchronized int getCurrentTerm() {
         return currentTerm;
     }
 
-    public void setCurrentTerm(int currentTerm) {
+    public synchronized void setCurrentTerm(int currentTerm) {
         try {
             store.put(CURRENT_TERM_KEY, String.valueOf(currentTerm));
             this.currentTerm = currentTerm;
@@ -97,11 +97,11 @@ public class ServerContext {
         }
     }
 
-    public int getVotedFor() {
+    public synchronized int getVotedFor() {
         return votedFor;
     }
 
-    public void setVotedFor(int votedFor) {
+    public synchronized void setVotedFor(int votedFor) {
         try {
             store.put(VOTED_FOR_KEY, String.valueOf(votedFor));
             this.votedFor = votedFor;

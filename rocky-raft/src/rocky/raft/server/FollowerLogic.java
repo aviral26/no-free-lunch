@@ -48,7 +48,7 @@ public class FollowerLogic extends BaseLogic {
                 serverContext.setLeaderAddress(Config.SERVERS.get(appendEntriesRpc.getLeaderId()));
 
                 AppendEntriesRpcReply appendEntriesRpcReply;
-                LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
+                LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex() - 1);
                 int appendEntriesPrevLogTerm = logEntryAtPrevLogIndex == null ? 0 : logEntryAtPrevLogIndex.getTerm();
 
                 if ((currentTerm > appendEntriesRpc.getTerm()) || (appendEntriesPrevLogTerm != appendEntriesRpc.getPrevLogTerm())) {
@@ -56,7 +56,7 @@ public class FollowerLogic extends BaseLogic {
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
                 } else {
                     for (LogEntry entry : appendEntriesRpc.getEntries()) {
-                        if (log.get(entry.getIndex()) == null)
+                        if (log.get(entry.getIndex() - 1) == null)
                             log.append(entry);
                         else {
                             LogUtils.debug(LOG_TAG, "Truncating log.");
