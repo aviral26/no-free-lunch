@@ -59,20 +59,20 @@ public class RaftLog implements Log {
     }
 
     @Override
-    public synchronized LogEntry get(int index) throws IOException {
-        LogEntry logEntry = cache.get(index);
+    public synchronized LogEntry get(int logEntryIndex) throws IOException {
+        LogEntry logEntry = cache.get(logEntryIndex);
         if (logEntry == null) {
-            byte[] data = queueFile.get(index - 1);
+            byte[] data = queueFile.get(logEntryIndex - 1);
             if (data != null) {
                 logEntry = new Gson().fromJson(new String(data), LogEntry.class);
-                cache.put(index, logEntry);
+                cache.put(logEntryIndex, logEntry);
             }
         }
         return logEntry;
     }
 
     @Override
-    public List<LogEntry> getAll(int fromIndex) throws IOException {
+    public List<LogEntry> getAll(int fromLogEntryIndex) throws IOException {
         Gson gson = new Gson();
         List<LogEntry> logEntryList = new ArrayList<>();
 
@@ -82,7 +82,7 @@ public class RaftLog implements Log {
             @Override
             public boolean read(InputStream in, int length) throws IOException {
                 ++current;
-                if (current >= fromIndex - 1) {
+                if (current >= fromLogEntryIndex - 1) {
                     LogEntry entry = cache.get(current + 1);
                     if (entry == null) {
                         byte[] data = new byte[length];
