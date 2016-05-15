@@ -49,9 +49,9 @@ public class FollowerLogic extends BaseLogic {
 
                 AppendEntriesRpcReply appendEntriesRpcReply;
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
-                int appendEntriesPrevLogTerm = logEntryAtPrevLogIndex == null ? -1 : logEntryAtPrevLogIndex.getTerm();
+                int appendEntriesPrevLogTerm = logEntryAtPrevLogIndex == null ? 0 : logEntryAtPrevLogIndex.getTerm();
 
-                if ((currentTerm > appendEntriesRpc.getTerm()) || (appendEntriesPrevLogTerm != appendEntriesRpc.getTerm())) {
+                if ((currentTerm > appendEntriesRpc.getTerm()) || (appendEntriesPrevLogTerm != appendEntriesRpc.getPrevLogTerm())) {
                     appendEntriesRpcReply = new AppendEntriesRpcReply(currentTerm, false);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
                 } else {

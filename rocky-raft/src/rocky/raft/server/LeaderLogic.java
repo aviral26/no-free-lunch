@@ -11,6 +11,7 @@ import rocky.raft.utils.NetworkUtils;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -194,7 +195,7 @@ public class LeaderLogic extends BaseLogic {
             int prevLogIndex = nextIndex[followerId] - 1;
             LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
-            List<LogEntry> entries = null;
+            List<LogEntry> entries = new ArrayList<>();
             Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
             if (index >= nextIndex[followerId]) {
