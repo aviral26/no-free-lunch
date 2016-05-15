@@ -44,8 +44,9 @@ public class FollowerLogic extends BaseLogic {
                 AppendEntriesRpc appendEntriesRpc = (AppendEntriesRpc) message.getMeta();
                 AppendEntriesRpcReply appendEntriesRpcReply;
                 LogEntry logEntryAtPrevLogIndex = log.get(appendEntriesRpc.getPrevLogIndex());
+                int appendEntriesPrevLogTerm = logEntryAtPrevLogIndex == null ? -1 : logEntryAtPrevLogIndex.getTerm();
 
-                if ((currentTerm > appendEntriesRpc.getTerm()) || (logEntryAtPrevLogIndex.getTerm() != appendEntriesRpc.getTerm())) {
+                if ((currentTerm > appendEntriesRpc.getTerm()) || (appendEntriesPrevLogTerm != appendEntriesRpc.getTerm())) {
                     appendEntriesRpcReply = new AppendEntriesRpcReply(currentTerm, false);
                     LogUtils.debug(LOG_TAG, "Replying false to AppendEntriesRPC.");
                 } else {
@@ -80,7 +81,10 @@ public class FollowerLogic extends BaseLogic {
                     LogUtils.debug(LOG_TAG, "I have higher term, so not granting vote to candidate " + requestVoteRpc.getCandidateId());
                     requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, false);
                 } else {
-                    if ((serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId()) && serverContext.getLastIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getCurrentTerm() <= requestVoteRpc.getLastLogTerm()) {
+                    LogUtils.debug(LOG_TAG, "serverContext: " + serverContext);
+                    boolean votedFor = serverContext.getVotedFor() == -1 || serverContext.getVotedFor() == requestVoteRpc.getCandidateId();
+                    boolean latestLog = serverContext.getLastIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getLastTerm() <= requestVoteRpc.getLastLogTerm();
+                    if (votedFor && latestLog) {
                         LogUtils.debug(LOG_TAG, "Granting vote to candidate: " + requestVoteRpc.getCandidateId());
                         serverContext.setVotedFor(requestVoteRpc.getCandidateId());
 

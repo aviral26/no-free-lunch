@@ -191,40 +191,42 @@ public class LeaderLogic extends BaseLogic {
             int term = serverContext.getCurrentTerm();
             int id = serverContext.getId();
             int commitIndex = serverContext.getCommitIndex();
+            int prevLogIndex = nextIndex[followerId] - 1;
+            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
+            int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
+            List<LogEntry> entries = null;
+            Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
             if (index >= nextIndex[followerId]) {
-                Address address = Config.SERVERS.get(followerId);
-                Socket socket = new Socket(address.getIp(), address.getServerPort());
-
                 // Prepare message
-                int prevLogIndex = nextIndex[followerId] - 1;
-                LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
-                int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
-                List<LogEntry> entries = serverContext.getLog().getAll(nextIndex[followerId]);
-                Message message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC)
-                        .setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex)).build();
-
-                // Send AppendEntriesRpc
-                NetworkUtils.writeMessage(socket, message);
-
-                // Get AppendEntriesRpcReply
-                Message reply = NetworkUtils.readMessage(socket);
-                if (reply.getStatus() != Message.Status.OK) {
-                    throw new Exception("Received error message from follower(" + followerId + "): " + reply);
-                }
-
-                // Process reply
-                AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
-                if (appendEntriesRpcReply.isSuccess()) {
-                    nextIndex[followerId] = index;
-                    matchIndex[followerId] = index;
-                } else {
-                    nextIndex[followerId]--;
-                }
-
-                // Close connection
-                NetworkUtils.closeQuietly(socket);
+                entries = serverContext.getLog().getAll(nextIndex[followerId]);
             }
+
+            message.setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex));
+
+            Address address = Config.SERVERS.get(followerId);
+            Socket socket = new Socket(address.getIp(), address.getServerPort());
+
+            // Send AppendEntriesRpc
+            NetworkUtils.writeMessage(socket, message.build());
+
+            // Get AppendEntriesRpcReply
+            Message reply = NetworkUtils.readMessage(socket);
+            if (reply.getStatus() != Message.Status.OK) {
+                throw new Exception("Received error message from follower(" + followerId + "): " + reply);
+            }
+
+            // Process reply
+            AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
+            if (appendEntriesRpcReply.isSuccess()) {
+                nextIndex[followerId] = index;
+                matchIndex[followerId] = index;
+            } else {
+                nextIndex[followerId]--;
+            }
+
+            // Close connection
+            NetworkUtils.closeQuietly(socket);
         }
     }
 }

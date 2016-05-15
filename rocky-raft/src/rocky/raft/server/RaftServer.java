@@ -162,7 +162,7 @@ public class RaftServer implements Server {
 
         if (updateToFollower) {
             serverContext.setCurrentTerm(baseRpc.getTerm());
-            updateState(ServerState.FOLLOWER);
+            if (state != ServerState.FOLLOWER) updateState(ServerState.FOLLOWER);
         }
         return serverLogic.process(message);
     }

@@ -25,6 +25,7 @@ public class CandidateLogic extends BaseLogic {
     private OnMajorityReachedListener onMajorityReachedListener;
     private int clusterSize;
     private int voteCount;
+    private boolean released;
 
     CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener, OnMajorityReachedListener onMajorityReachedListener) {
         super(serverContext);
@@ -64,6 +65,7 @@ public class CandidateLogic extends BaseLogic {
     }
 
     private synchronized void incrementVoteCount() {
+        if (released) return;
         voteCount++;
         if (voteCount > clusterSize / 2) {
             onMajorityReachedListener.onMajorityReached();
@@ -72,6 +74,7 @@ public class CandidateLogic extends BaseLogic {
 
     @Override
     public void release() {
+        released = true;
         voteExecutor.shutdownNow();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }
