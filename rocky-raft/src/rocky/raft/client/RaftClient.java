@@ -31,7 +31,7 @@ public class RaftClient implements Client {
                     return leaderAddress;
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Connect failed", e);
+                LogUtils.error(LOG_TAG, "Connection failed: " + e.getMessage());
             }
         }
 
