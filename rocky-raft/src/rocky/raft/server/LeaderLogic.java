@@ -158,7 +158,7 @@ public class LeaderLogic extends BaseLogic {
 
             boolean majority = count > clusterSize / 2;
             if (majority) {
-                LogEntry entry = log.get(n - 1);
+                LogEntry entry = log.get(n);
                 if (entry != null && entry.getTerm() == currentTerm) {
                     LogUtils.debug(LOG_TAG, "Updating commitIndex to " + n);
                     serverContext.setCommitIndex(n);
@@ -197,14 +197,14 @@ public class LeaderLogic extends BaseLogic {
             int id = serverContext.getId();
             int commitIndex = serverContext.getCommitIndex();
             int prevLogIndex = nextIndex[followerId] - 1;
-            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex - 1);
+            LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
             List<LogEntry> entries = new ArrayList<>();
             Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
             if (index >= nextIndex[followerId]) {
                 // Prepare message
-                entries = serverContext.getLog().getAll(nextIndex[followerId] - 1);
+                entries = serverContext.getLog().getAll(nextIndex[followerId]);
             }
 
             message.setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex));

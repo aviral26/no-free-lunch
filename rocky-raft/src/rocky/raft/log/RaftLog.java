@@ -1,40 +1,59 @@
 package rocky.raft.log;
 
+import com.google.gson.Gson;
 import rocky.raft.common.LRUCache;
 import rocky.raft.dto.LogEntry;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
-public class RaftLog extends FileLog {
+/**
+ * RaftLog is responsible for caching and converting between LogEntry index and QueueFile index
+ */
+public class RaftLog implements Log {
 
-    private LRUCache<Integer, LogEntry> cache = new LRUCache<>(128);
+    private QueueFile queueFile;
+
+    private LRUCache<Integer, LogEntry> cache = new LRUCache<>(1024);
 
     private LogEntry last;
 
     public RaftLog(File file) throws IOException {
-        super(file);
+        queueFile = new QueueFile(file);
     }
 
     @Override
     public synchronized void append(LogEntry entry) throws IOException {
-        super.append(entry);
+        queueFile.add(new Gson().toJson(entry).getBytes());
         last = entry;
-        // LogEntry is 1 indexed. QueueFile is 0 indexed.
-        cache.put(entry.getIndex() - 1, entry);
+        cache.put(entry.getIndex(), entry);
     }
 
     @Override
     public synchronized void resize(int size) throws IOException {
-        super.resize(size);
-        last = null;
-        cache.clear();
+        queueFile.resize(size);
+        last = cache.get(size);
+        Iterator<Integer> iterator = cache.keySet().iterator();
+        while (iterator.hasNext()) {
+            int index = iterator.next();
+            if (index > size) {
+                iterator.remove();
+            }
+        }
     }
 
     @Override
     public synchronized LogEntry last() throws IOException {
         if (last == null) {
-            last = super.last();
+            byte[] data = queueFile.last();
+            if (data != null) {
+                last = new Gson().fromJson(new String(data), LogEntry.class);
+                cache.put(last.getIndex(), last);
+            }
         }
         return last;
     }
@@ -43,8 +62,38 @@ public class RaftLog extends FileLog {
     public synchronized LogEntry get(int index) throws IOException {
         LogEntry logEntry = cache.get(index);
         if (logEntry == null) {
-            logEntry = super.get(index);
+            byte[] data = queueFile.get(index - 1);
+            if (data != null) {
+                logEntry = new Gson().fromJson(new String(data), LogEntry.class);
+                cache.put(index, logEntry);
+            }
         }
         return logEntry;
+    }
+
+    @Override
+    public List<LogEntry> getAll(int fromIndex) throws IOException {
+        Gson gson = new Gson();
+        List<LogEntry> logEntryList = new ArrayList<>();
+
+        queueFile.forEach(new QueueFile.ElementVisitor() {
+            int current = -1;
+
+            @Override
+            public boolean read(InputStream in, int length) throws IOException {
+                ++current;
+                if (current >= fromIndex - 1) {
+                    LogEntry entry = cache.get(current + 1);
+                    if (entry == null) {
+                        byte[] data = new byte[length];
+                        in.read(data, 0, length);
+                        entry = gson.fromJson(new String(data), LogEntry.class);
+                    }
+                    logEntryList.add(entry);
+                }
+                return true;
+            }
+        });
+        return logEntryList;
     }
 }

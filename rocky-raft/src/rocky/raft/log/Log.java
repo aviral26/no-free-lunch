@@ -15,7 +15,5 @@ public interface Log {
 
     LogEntry get(int index) throws IOException;
 
-    List<LogEntry> getAll() throws IOException;
-
     List<LogEntry> getAll(int fromIndex) throws IOException;
 }

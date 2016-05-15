@@ -43,7 +43,7 @@ public abstract class BaseLogic implements ServerLogic {
             case GET_POSTS:
                 reply = new Message.Builder().setType(Message.Type.GET_POSTS_REPLY)
                         .setStatus(Message.Status.OK)
-                        .setMeta(new GetPostsReply(parsePosts(serverContext.getLog().getAll()))).build();
+                        .setMeta(new GetPostsReply(parsePosts(serverContext.getLog().getAll(1)))).build();
                 break;
         }
 
