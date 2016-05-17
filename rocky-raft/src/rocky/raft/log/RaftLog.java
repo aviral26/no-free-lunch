@@ -72,7 +72,7 @@ public class RaftLog implements Log {
     }
 
     @Override
-    public List<LogEntry> getAll(int fromLogEntryIndex) throws IOException {
+    public synchronized List<LogEntry> getAll(int fromLogEntryIndex) throws IOException {
         Gson gson = new Gson();
         List<LogEntry> logEntryList = new ArrayList<>();
 

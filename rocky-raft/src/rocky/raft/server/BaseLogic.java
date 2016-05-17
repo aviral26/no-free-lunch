@@ -5,9 +5,11 @@ import rocky.raft.dto.GetLeaderAddrReply;
 import rocky.raft.dto.GetPostsReply;
 import rocky.raft.dto.LogEntry;
 import rocky.raft.dto.Message;
+import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,9 +43,9 @@ public abstract class BaseLogic implements ServerLogic {
                         .setMeta(new GetLeaderAddrReply(serverContext.getLeaderAddress())).build();
                 break;
             case GET_POSTS:
-                reply = new Message.Builder().setType(Message.Type.GET_POSTS_REPLY)
-                        .setStatus(Message.Status.OK)
-                        .setMeta(new GetPostsReply(parsePosts(serverContext.getLog().getAll(1)))).build();
+                if (!(this instanceof LeaderLogic)) {
+                    reply = getPostsReply(serverContext.getLog());
+                }
                 break;
         }
 
@@ -51,6 +53,12 @@ public abstract class BaseLogic implements ServerLogic {
             reply = handleMessage(message, serverContext);
         }
         return reply;
+    }
+
+    protected Message getPostsReply(Log log) throws IOException {
+        return new Message.Builder().setType(Message.Type.GET_POSTS_REPLY)
+                .setStatus(Message.Status.OK)
+                .setMeta(new GetPostsReply(parsePosts(log.getAll(1)))).build();
     }
 
     private List<String> parsePosts(List<LogEntry> entries) {

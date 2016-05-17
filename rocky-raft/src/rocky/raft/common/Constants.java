@@ -8,4 +8,6 @@ public class Constants {
     public static final long TIMEOUT_MIN = 150; // In milliseconds.
 
     public static final long HEARTBEAT_DELAY = 100;
+
+    public static final long CLIENT_TIMEOUT = 5 * HEARTBEAT_DELAY;
 }

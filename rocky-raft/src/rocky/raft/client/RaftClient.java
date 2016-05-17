@@ -27,11 +27,13 @@ public class RaftClient implements Client {
 
                 if (reply.getStatus() == Message.Status.OK) {
                     Address leaderAddress = ((GetLeaderAddrReply) reply.getMeta()).getLeaderAddress();
-                    LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
-                    return leaderAddress;
+                    if (leaderAddress != null) {
+                        LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
+                        return leaderAddress;
+                    }
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Connection failed: " + e.getMessage());
+                LogUtils.error(LOG_TAG, "Connection failed: " + address);
             }
         }
 

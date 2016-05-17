@@ -11,18 +11,17 @@ import rocky.raft.utils.NetworkUtils;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class LeaderLogic extends BaseLogic {
 
     private String LOG_TAG = "LEADER_LOGIC-";
 
-    private ExecutorService hearbeatExecutor;
+    private ExecutorService heartbeatExecutor;
 
     private int clusterSize;
 
@@ -31,6 +30,10 @@ public class LeaderLogic extends BaseLogic {
     private int[] matchIndex;
 
     private Map<Integer, InterruptibleSemaphore> semaphoreMap = new ConcurrentHashMap<>();
+
+    private Set<InterruptibleSemaphore> readSemaphores = Collections.synchronizedSet(new HashSet<>());
+
+    private int heartbeatCounter;
 
     public LeaderLogic(ServerContext serverContext) {
         super(serverContext);
@@ -58,14 +61,16 @@ public class LeaderLogic extends BaseLogic {
         sendHeartbeat();
     }
 
-    private void resetHeartbeatExecutor() {
-        if (hearbeatExecutor != null) hearbeatExecutor.shutdownNow();
-        hearbeatExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
+    private synchronized void resetHeartbeat() {
+        if (heartbeatExecutor != null) heartbeatExecutor.shutdownNow();
+        heartbeatExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
+
+        heartbeatCounter = 0;
     }
 
     @Override
     public void release() {
-        hearbeatExecutor.shutdownNow();
+        heartbeatExecutor.shutdownNow();
         interruptAllClients();
         TimeoutManager.getInstance().remove(LOG_TAG);
     }
@@ -73,6 +78,9 @@ public class LeaderLogic extends BaseLogic {
     @Override
     protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
         switch (message.getType()) {
+            case GET_POSTS:
+                waitForMajorityHeartbeats();
+                return getPostsReply(serverContext.getLog());
             case DO_POST:
                 String post = ((DoPost) message.getMeta()).getPost();
                 LogEntry entry = doPost(post);
@@ -83,9 +91,35 @@ public class LeaderLogic extends BaseLogic {
         return null;
     }
 
+    private synchronized void incrementHeartbeatCounter() {
+        heartbeatCounter++;
+        if (heartbeatCounter == clusterSize / 2 + 1) {
+            Set<InterruptibleSemaphore> readSemaphoresCopy = new HashSet<>(readSemaphores);
+            for (InterruptibleSemaphore semaphore : readSemaphoresCopy) {
+                semaphore.release();
+            }
+        }
+    }
+
     private void interruptAllClients() {
         for (InterruptibleSemaphore semaphore : semaphoreMap.values()) {
             semaphore.interrupt();
+        }
+
+        Set<InterruptibleSemaphore> readSemaphoresCopy = new HashSet<>(readSemaphores);
+        for (InterruptibleSemaphore semaphore : readSemaphoresCopy) {
+            semaphore.interrupt();
+        }
+    }
+
+    private void waitForMajorityHeartbeats() throws InterruptedException {
+        LogUtils.debug(LOG_TAG, "Waiting until I hear majority of heartbeats");
+        InterruptibleSemaphore semaphore = new InterruptibleSemaphore(0);
+        readSemaphores.add(semaphore);
+        try {
+            semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS);
+        } finally {
+            readSemaphores.remove(semaphore);
         }
     }
 
@@ -94,8 +128,8 @@ public class LeaderLogic extends BaseLogic {
         InterruptibleSemaphore semaphore = new InterruptibleSemaphore(0);
         semaphoreMap.put(entry.getIndex(), semaphore);
         try {
-            semaphore.acquire();
-            // TODO No timeout here. What to do?
+            semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS);
+            // TODO Any cleanup to do on timeout?
         } finally {
             semaphoreMap.remove(entry.getIndex());
         }
@@ -112,21 +146,25 @@ public class LeaderLogic extends BaseLogic {
         return entry;
     }
 
-    private void sendHeartbeat() {
+    private synchronized void sendHeartbeat() {
         // Terminate previous heartbeats
-        resetHeartbeatExecutor();
-
-        // Send new heartbeats
-        LogUtils.debug(LOG_TAG, "Sending heartbeat to followers");
-        int leaderId = serverContext.getId();
-
-        for (int id = 0; id < clusterSize; ++id) {
-            if (id != leaderId) {
-                hearbeatExecutor.submit(new SendHearbeatTask(id));
-            }
-        }
+        resetHeartbeat();
 
         try {
+            // Send new heartbeats
+            LogUtils.debug(LOG_TAG, "Sending heartbeat to followers");
+            int index = serverContext.getLastIndex();
+            int term = serverContext.getCurrentTerm();
+            int leaderId = serverContext.getId();
+            int commitIndex = serverContext.getCommitIndex();
+
+            for (int followerId = 0; followerId < clusterSize; ++followerId) {
+                if (followerId != leaderId) {
+                    heartbeatExecutor.submit(new SendHearbeatTask(followerId, index, term, leaderId, commitIndex));
+                }
+            }
+
+            // Update commit index
             updateCommitIndex(serverContext);
         } catch (IOException e) {
             LogUtils.error(LOG_TAG, "Failed to update commitIndex", e);
@@ -178,24 +216,41 @@ public class LeaderLogic extends BaseLogic {
 
         private int followerId;
 
-        public SendHearbeatTask(int followerId) {
+        private int index;
+
+        private int term;
+
+        private int leaderId;
+
+        private int commitIndex;
+
+        public SendHearbeatTask(int followerId, int index, int term, int leaderId, int commitIndex) {
             this.followerId = followerId;
+            this.index = index;
+            this.term = term;
+            this.leaderId = leaderId;
+            this.commitIndex = commitIndex;
         }
 
         @Override
         public void run() {
             try {
-                doSendHeartbeat(followerId);
+                doSendHeartbeat();
+                incrementHeartbeatCounter();
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId + ": " + e.getMessage());
+                if (!(e instanceof InterruptedException)) {
+                    LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId + ": " + e.getMessage());
+                }
             }
         }
 
-        private void doSendHeartbeat(int followerId) throws Exception {
-            int index = serverContext.getLastIndex();
-            int term = serverContext.getCurrentTerm();
-            int id = serverContext.getId();
-            int commitIndex = serverContext.getCommitIndex();
+        private void throwIfInterrupted() throws InterruptedException {
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+
+        private Message prepareHeartbeatMessage() throws IOException {
             int prevLogIndex = nextIndex[followerId] - 1;
             LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
@@ -203,34 +258,45 @@ public class LeaderLogic extends BaseLogic {
             Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
             if (index >= nextIndex[followerId]) {
-                // Prepare message
+                // Prepare entries
                 entries = serverContext.getLog().getAll(nextIndex[followerId]);
             }
 
-            message.setMeta(new AppendEntriesRpc(term, id, prevLogIndex, prevLogTerm, entries, commitIndex));
+            message.setMeta(new AppendEntriesRpc(term, leaderId, prevLogIndex, prevLogTerm, entries, commitIndex));
 
-            Address address = Config.SERVERS.get(followerId);
-            Socket socket = new Socket(address.getIp(), address.getServerPort());
+            return message.build();
+        }
 
-            // Send AppendEntriesRpc
-            NetworkUtils.writeMessage(socket, message.build());
+        private void doSendHeartbeat() throws Exception {
+            Socket socket = null;
 
-            // Get AppendEntriesRpcReply
-            Message reply = NetworkUtils.readMessage(socket);
-            if (reply.getStatus() != Message.Status.OK) {
-                throw new Exception("Received error message from follower(" + followerId + "): " + reply);
+            try {
+                Address address = Config.SERVERS.get(followerId);
+                socket = new Socket(address.getIp(), address.getServerPort());
+
+                // Send AppendEntriesRpc
+                NetworkUtils.writeMessage(socket, prepareHeartbeatMessage());
+                throwIfInterrupted();
+
+                // Get AppendEntriesRpcReply
+                Message reply = NetworkUtils.readMessage(socket);
+                throwIfInterrupted();
+
+                if (reply.getStatus() != Message.Status.OK) {
+                    throw new Exception("Received error message from follower(" + followerId + "): " + reply);
+                }
+
+                // Process reply
+                AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
+                if (appendEntriesRpcReply.isSuccess()) {
+                    setNextAndMatchIndex(followerId, index);
+                } else {
+                    nextIndex[followerId]--;
+                }
+            } finally {
+                // Close connection
+                NetworkUtils.closeQuietly(socket);
             }
-
-            // Process reply
-            AppendEntriesRpcReply appendEntriesRpcReply = (AppendEntriesRpcReply) reply.getMeta();
-            if (appendEntriesRpcReply.isSuccess()) {
-                setNextAndMatchIndex(followerId, index);
-            } else {
-                nextIndex[followerId]--;
-            }
-
-            // Close connection
-            NetworkUtils.closeQuietly(socket);
         }
     }
 }
