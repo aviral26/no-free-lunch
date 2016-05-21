@@ -10,10 +10,17 @@ public class LogEntry implements Serializable {
 
     private String value;
 
+    private boolean isConfigEntry;
+
     public LogEntry(int index, int term, String value) {
+        this(index, term, value, false);
+    }
+
+    public LogEntry(int index, int term, String value, boolean isConfigEntry) {
         this.index = index;
         this.term = term;
         this.value = value;
+        this.isConfigEntry = isConfigEntry;
     }
 
     public int getIndex() {
@@ -40,6 +47,14 @@ public class LogEntry implements Serializable {
         this.value = value;
     }
 
+    public boolean isConfigEntry() {
+        return isConfigEntry;
+    }
+
+    public void setConfigEntry(boolean configEntry) {
+        isConfigEntry = configEntry;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -49,6 +64,7 @@ public class LogEntry implements Serializable {
 
         if (index != entry.index) return false;
         if (term != entry.term) return false;
+        if (isConfigEntry != entry.isConfigEntry) return false;
         return value != null ? value.equals(entry.value) : entry.value == null;
 
     }
@@ -58,6 +74,7 @@ public class LogEntry implements Serializable {
         int result = index;
         result = 31 * result + term;
         result = 31 * result + (value != null ? value.hashCode() : 0);
+        result = 31 * result + (isConfigEntry ? 1 : 0);
         return result;
     }
 
@@ -67,6 +84,7 @@ public class LogEntry implements Serializable {
                 "index=" + index +
                 ", term=" + term +
                 ", value='" + value + '\'' +
+                ", isConfigEntry=" + isConfigEntry +
                 '}';
     }
 }

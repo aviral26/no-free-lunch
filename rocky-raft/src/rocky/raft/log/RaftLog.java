@@ -22,8 +22,10 @@ public class RaftLog implements Log {
 
     private LogEntry last;
 
+    private LogEntry config;
+
     public RaftLog(File file) throws IOException {
-        queueFile = new QueueFile(file);
+        this.queueFile = new QueueFile(file);
     }
 
     @Override
@@ -31,6 +33,7 @@ public class RaftLog implements Log {
         queueFile.add(new Gson().toJson(entry).getBytes());
         last = entry;
         cache.put(entry.getIndex(), entry);
+        if (last.isConfigEntry()) config = last;
     }
 
     @Override
@@ -44,6 +47,8 @@ public class RaftLog implements Log {
                 iterator.remove();
             }
         }
+        config = null;
+        if (last != null && last.isConfigEntry()) config = last;
     }
 
     @Override
@@ -95,5 +100,18 @@ public class RaftLog implements Log {
             }
         });
         return logEntryList;
+    }
+
+    @Override
+    public synchronized LogEntry getLatestConfig() throws IOException {
+        // TODO make this more efficient.
+        if (config == null) {
+            for (LogEntry logEntry : getAll(1)) {
+                if (logEntry.isConfigEntry()) {
+                    config = logEntry;
+                }
+            }
+        }
+        return config;
     }
 }

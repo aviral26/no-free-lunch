@@ -29,7 +29,7 @@ public class RaftServer implements Server {
 
     @Override
     public void start() {
-        LogUtils.debug(LOG_TAG, "Starting server " + serverContext.getAddress() + " in FOLLOWER state.");
+        shutdownIfRequired();
         updateState(ServerState.FOLLOWER);
         listenClients();
         listenServers();
@@ -97,6 +97,7 @@ public class RaftServer implements Server {
                 LogUtils.error(LOG_TAG, "Something went really really wrong while handling client. Client not notified of failure.", e);
             } finally {
                 NetworkUtils.closeQuietly(socket);
+                shutdownIfRequired();
             }
         };
 
@@ -139,10 +140,30 @@ public class RaftServer implements Server {
                 LogUtils.error(LOG_TAG, "Something went really really wrong while handling server. Server not notified of failure.", e);
             } finally {
                 NetworkUtils.closeQuietly(socket);
+                shutdownIfRequired();
             }
         };
 
         Utils.startThread("handle-server", runnable);
+    }
+
+    private void shutdownIfRequired() {
+        boolean shutdown = false;
+        switch (state) {
+            case FOLLOWER:
+            case CANDIDATE:
+            case INACTIVE:
+                shutdown = !serverContext.getConfig().getServerConfigs().contains(serverContext.getServerConfig());
+                break;
+            case LEADER:
+                shutdown = !serverContext.getConfig().getAll().contains(serverContext.getServerConfig());
+                break;
+        }
+
+        if (shutdown) {
+            LogUtils.debug(LOG_TAG, "I am not in config. Shutting down.");
+            System.exit(0);
+        }
     }
 
     private Message processServerMessage(Message message) throws Exception {

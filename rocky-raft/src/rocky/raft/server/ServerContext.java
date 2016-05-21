@@ -3,6 +3,7 @@ package rocky.raft.server;
 import rocky.raft.common.Config;
 import rocky.raft.dto.Address;
 import rocky.raft.dto.LogEntry;
+import rocky.raft.dto.ServerConfig;
 import rocky.raft.log.Log;
 import rocky.raft.log.RaftLog;
 import rocky.raft.store.FileStore;
@@ -26,17 +27,9 @@ public class ServerContext {
 
     private int id;
 
-    private Address address;
-
-    private Address leaderAddress;
+    private ServerConfig leaderConfig;
 
     private Store store;
-
-    // Persistent
-    private int currentTerm;
-
-    // Persistent
-    private int votedFor;
 
     // Persistent
     private Log log;
@@ -46,26 +39,10 @@ public class ServerContext {
     public ServerContext(int id) throws IOException {
         LOG_TAG += id;
         this.id = id;
-        this.address = Config.SERVERS.get(id);
-        this.leaderAddress = null;
+        this.leaderConfig = null;
         this.store = new FileStore(new File(STORE_FILE + id));
         this.log = new RaftLog(new File(LOG_FILE + id));
         this.commitIndex = 0;
-        initPersistentVars();
-    }
-
-    private void initPersistentVars() throws IOException {
-        String currentTerm = store.get(CURRENT_TERM_KEY);
-        if (currentTerm == null) {
-            currentTerm = "0";
-        }
-        this.currentTerm = Integer.valueOf(currentTerm);
-
-        String votedFor = store.get(VOTED_FOR_KEY);
-        if (votedFor == null) {
-            votedFor = "-1";
-        }
-        this.votedFor = Integer.valueOf(votedFor);
     }
 
     public int getId() {
@@ -73,38 +50,40 @@ public class ServerContext {
     }
 
     public Address getAddress() {
-        return address;
+        return getServerConfig().getAddress();
     }
 
-    public Address getLeaderAddress() {
-        return leaderAddress;
+    public ServerConfig getServerConfig() {
+        return getConfig().getServerConfig(id);
     }
 
-    public void setLeaderAddress(Address leaderAddress) {
-        this.leaderAddress = leaderAddress;
+    public ServerConfig getLeaderConfig() {
+        return leaderConfig;
     }
 
-    public synchronized int getCurrentTerm() {
-        return currentTerm;
+    public void setLeaderConfig(ServerConfig leaderConfig) {
+        this.leaderConfig = leaderConfig;
     }
 
-    public synchronized void setCurrentTerm(int currentTerm) {
+    public int getCurrentTerm() {
+        return Integer.parseInt(store.getOrDefault(CURRENT_TERM_KEY, "0"));
+    }
+
+    public void setCurrentTerm(int currentTerm) {
         try {
             store.put(CURRENT_TERM_KEY, String.valueOf(currentTerm));
-            this.currentTerm = currentTerm;
         } catch (IOException e) {
             LogUtils.error(LOG_TAG, "Failed to persist currentTerm", e);
         }
     }
 
-    public synchronized int getVotedFor() {
-        return votedFor;
+    public int getVotedFor() {
+        return Integer.parseInt(store.getOrDefault(VOTED_FOR_KEY, "-1"));
     }
 
-    public synchronized void setVotedFor(int votedFor) {
+    public void setVotedFor(int votedFor) {
         try {
             store.put(VOTED_FOR_KEY, String.valueOf(votedFor));
-            this.votedFor = votedFor;
         } catch (IOException e) {
             LogUtils.error(LOG_TAG, "Failed to persist votedFor", e);
         }
@@ -112,6 +91,20 @@ public class ServerContext {
 
     public Log getLog() {
         return log;
+    }
+
+    public Config getConfig() {
+        Config config = null;
+        try {
+            config = Config.buildFromLog(log);
+        } catch (Exception e) {
+            try {
+                config = Config.buildDefault();
+            } catch (Exception ex) {
+                LogUtils.error(LOG_TAG, "Failed to build config", ex);
+            }
+        }
+        return config;
     }
 
     public int getCommitIndex() {
@@ -135,14 +128,12 @@ public class ServerContext {
     @Override
     public String toString() {
         return "ServerContext{" +
-                "id=" + id +
-                ", address=" + address +
-                ", leaderAddress=" + leaderAddress +
-                ", store=" + store +
-                ", currentTerm=" + currentTerm +
-                ", votedFor=" + votedFor +
+                "commitIndex=" + commitIndex +
                 ", log=" + log +
-                ", commitIndex=" + commitIndex +
+                ", config=" + getConfig() +
+                ", store=" + store +
+                ", leaderConfig=" + leaderConfig +
+                ", id=" + id +
                 '}';
     }
 }

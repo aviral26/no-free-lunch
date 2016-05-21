@@ -1,5 +1,6 @@
 package rocky.raft.server;
 
+import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.Constants;
 import rocky.raft.common.InterruptibleSemaphore;
@@ -8,52 +9,50 @@ import rocky.raft.dto.*;
 import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.NetworkUtils;
+import rocky.raft.utils.Utils;
 
 import java.io.IOException;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
-public class LeaderLogic extends BaseLogic {
+class LeaderLogic extends BaseLogic {
 
     private String LOG_TAG = "LEADER_LOGIC-";
 
     private ExecutorService heartbeatExecutor;
 
-    private int clusterSize;
+    private Map<Integer, Integer> nextIndex;
 
-    private int[] nextIndex;
-
-    private int[] matchIndex;
+    private Map<Integer, Integer> matchIndex;
 
     private Map<Integer, InterruptibleSemaphore> semaphoreMap = new ConcurrentHashMap<>();
 
     private Set<InterruptibleSemaphore> readSemaphores = Collections.synchronizedSet(new HashSet<>());
 
-    private int heartbeatCounter;
+    private List<ServerConfig> heartbeatSentTo;
 
-    public LeaderLogic(ServerContext serverContext) {
+    LeaderLogic(ServerContext serverContext) {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 
-        serverContext.setLeaderAddress(serverContext.getAddress());
-        clusterSize = Config.SERVERS.size();
-        nextIndex = new int[clusterSize];
-        matchIndex = new int[clusterSize];
+        serverContext.setLeaderConfig(serverContext.getServerConfig());
+        nextIndex = new HashMap<>();
+        matchIndex = new HashMap<>();
+        heartbeatSentTo = new ArrayList<>();
 
-        try {
-            int index = serverContext.getLastIndex();
-
-            for (int i = 0; i < clusterSize; ++i) {
-                nextIndex[i] = index + 1;
-                matchIndex[i] = 0;
+        // If current configuration is joint, commit new configuration.
+        final Config config = serverContext.getConfig();
+        Utils.startThread("commit-new-config", () -> {
+            if (config.isJointConfig()) {
+                try {
+                    commitToLog(new Gson().toJson(config), true);
+                    LogUtils.debug(LOG_TAG, "Commited new config");
+                } catch (Exception e) {
+                    LogUtils.error(LOG_TAG, "Failed to commit new config", e);
+                }
             }
-        } catch (Exception e) {
-            LogUtils.error(LOG_TAG, "Could not read log. This will cause errors.");
-        }
+        });
     }
 
     @Override
@@ -63,9 +62,8 @@ public class LeaderLogic extends BaseLogic {
 
     private synchronized void resetHeartbeat() {
         if (heartbeatExecutor != null) heartbeatExecutor.shutdownNow();
-        heartbeatExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
-
-        heartbeatCounter = 0;
+        heartbeatExecutor = Executors.newFixedThreadPool(Math.max(1, serverContext.getConfig().getAll().size() - 1));
+        heartbeatSentTo.clear();
     }
 
     @Override
@@ -77,70 +75,83 @@ public class LeaderLogic extends BaseLogic {
 
     @Override
     protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
+        LogEntry entry;
         switch (message.getType()) {
             case GET_POSTS:
                 waitForMajorityHeartbeats();
                 return getPostsReply(serverContext.getLog());
+
             case DO_POST:
                 String post = ((DoPost) message.getMeta()).getPost();
-                LogEntry entry = doPost(post);
+                entry = commitToLog(post, false);
                 waitForCommit(entry);
                 return new Message.Builder().setType(Message.Type.DO_POST_REPLY)
+                        .setStatus(Message.Status.OK).build();
+
+            case CHANGE_CONFIG:
+                Config oldConfig = serverContext.getConfig();
+                Config newConfig = ((ChangeConfig) message.getMeta()).getConfig();
+                Config jointConfig = new Config(oldConfig.getServerConfigs(), newConfig.getServerConfigs(), true);
+
+                entry = commitToLog(new Gson().toJson(jointConfig), true);
+                waitForCommit(entry);
+                LogUtils.debug(LOG_TAG, "Joint configuration committed.");
+
+                entry = commitToLog(new Gson().toJson(newConfig), true);
+                waitForCommit(entry);
+                LogUtils.debug(LOG_TAG, "New configuration committed.");
+
+                return new Message.Builder().setType(Message.Type.CHANGE_CONFIG_REPLY)
                         .setStatus(Message.Status.OK).build();
         }
         return null;
     }
 
-    private synchronized void incrementHeartbeatCounter() {
-        heartbeatCounter++;
-        if (heartbeatCounter == clusterSize / 2 + 1) {
+    private synchronized void onHeartbeatSent(ServerConfig serverConfig) {
+        heartbeatSentTo.add(serverConfig);
+        if (serverContext.getConfig().isMajority(heartbeatSentTo)) {
             Set<InterruptibleSemaphore> readSemaphoresCopy = new HashSet<>(readSemaphores);
-            for (InterruptibleSemaphore semaphore : readSemaphoresCopy) {
-                semaphore.release();
-            }
+            readSemaphoresCopy.forEach(InterruptibleSemaphore::release);
         }
     }
 
     private void interruptAllClients() {
-        for (InterruptibleSemaphore semaphore : semaphoreMap.values()) {
-            semaphore.interrupt();
-        }
-
+        semaphoreMap.values().forEach(InterruptibleSemaphore::interrupt);
         Set<InterruptibleSemaphore> readSemaphoresCopy = new HashSet<>(readSemaphores);
-        for (InterruptibleSemaphore semaphore : readSemaphoresCopy) {
-            semaphore.interrupt();
-        }
+        readSemaphoresCopy.forEach(InterruptibleSemaphore::interrupt);
     }
 
-    private void waitForMajorityHeartbeats() throws InterruptedException {
+    private void waitForMajorityHeartbeats() throws InterruptedException, TimeoutException {
         LogUtils.debug(LOG_TAG, "Waiting until I hear majority of heartbeats");
         InterruptibleSemaphore semaphore = new InterruptibleSemaphore(0);
         readSemaphores.add(semaphore);
         try {
-            semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS);
+            if (!semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS)) {
+                throw new TimeoutException("Failed to hear majority of heartbeats");
+            }
         } finally {
             readSemaphores.remove(semaphore);
         }
     }
 
-    private void waitForCommit(LogEntry entry) throws InterruptedException {
+    private void waitForCommit(LogEntry entry) throws InterruptedException, TimeoutException {
         LogUtils.debug(LOG_TAG, "Waiting until entry is committed");
         InterruptibleSemaphore semaphore = new InterruptibleSemaphore(0);
         semaphoreMap.put(entry.getIndex(), semaphore);
         try {
-            semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS);
-            // TODO Any cleanup to do on timeout?
+            if (!semaphore.tryAcquire(Constants.CLIENT_TIMEOUT, TimeUnit.MILLISECONDS)) {
+                throw new TimeoutException("Failed to commit: " + entry);
+            }
         } finally {
             semaphoreMap.remove(entry.getIndex());
         }
     }
 
-    private synchronized LogEntry doPost(String post) throws Exception {
+    private synchronized LogEntry commitToLog(String value, boolean isConfigEntry) throws Exception {
         int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
         int leaderId = serverContext.getId();
-
-        LogEntry entry = new LogEntry(lastIndex + 1, term, post);
+        LogEntry entry = new LogEntry(lastIndex + 1, term, value, isConfigEntry);
         serverContext.getLog().append(entry);
         setNextAndMatchIndex(leaderId, lastIndex + 1);
         return entry;
@@ -152,15 +163,18 @@ public class LeaderLogic extends BaseLogic {
 
         try {
             // Send new heartbeats
-            LogUtils.debug(LOG_TAG, "Sending heartbeat to followers");
+            LogUtils.debug(LOG_TAG, "Sending heartbeat...");
             int index = serverContext.getLastIndex();
             int term = serverContext.getCurrentTerm();
             int leaderId = serverContext.getId();
             int commitIndex = serverContext.getCommitIndex();
 
-            for (int followerId = 0; followerId < clusterSize; ++followerId) {
+            for (ServerConfig serverConfig : serverContext.getConfig().getAll()) {
+                int followerId = serverConfig.getId();
                 if (followerId != leaderId) {
                     heartbeatExecutor.submit(new SendHearbeatTask(followerId, index, term, leaderId, commitIndex));
+                } else {
+                    onHeartbeatSent(serverConfig);
                 }
             }
 
@@ -175,26 +189,23 @@ public class LeaderLogic extends BaseLogic {
     }
 
     private void notifyClients(int newCommitIndex) {
-        for (Integer index : semaphoreMap.keySet()) {
-            if (index <= newCommitIndex) {
-                semaphoreMap.get(index).release();
-            }
-        }
+        semaphoreMap.keySet().stream().filter(index -> index <= newCommitIndex).forEach(index -> semaphoreMap.get(index).release());
     }
 
     private void updateCommitIndex(ServerContext serverContext) throws IOException {
+        Config config = serverContext.getConfig();
         Log log = serverContext.getLog();
         int lastIndex = serverContext.getLastIndex();
         int commitIndex = serverContext.getCommitIndex();
         int currentTerm = serverContext.getCurrentTerm();
+        List<ServerConfig> replicas = new ArrayList<>();
 
         for (int n = lastIndex; n > commitIndex; --n) {
-            int count = 0;
-            for (int i = 0; i < clusterSize; ++i) {
-                if (matchIndex[i] >= n) count++;
+            for (ServerConfig serverConfig : config.getAll()) {
+                if (matchIndex.getOrDefault(serverConfig.getId(), 0) >= n) replicas.add(serverConfig);
             }
 
-            boolean majority = count > clusterSize / 2;
+            boolean majority = config.isMajority(replicas);
             if (majority) {
                 LogEntry entry = log.get(n);
                 if (entry != null && entry.getTerm() == currentTerm) {
@@ -208,8 +219,8 @@ public class LeaderLogic extends BaseLogic {
     }
 
     private void setNextAndMatchIndex(int id, int index) {
-        nextIndex[id] = index + 1;
-        matchIndex[id] = index;
+        nextIndex.put(id, index + 1);
+        matchIndex.put(id, index);
     }
 
     private class SendHearbeatTask implements Runnable {
@@ -236,7 +247,7 @@ public class LeaderLogic extends BaseLogic {
         public void run() {
             try {
                 doSendHeartbeat();
-                incrementHeartbeatCounter();
+                onHeartbeatSent(serverContext.getConfig().getServerConfig(followerId));
             } catch (Exception e) {
                 if (!(e instanceof InterruptedException)) {
                     LogUtils.error(LOG_TAG, "Error occurred in sending heartbeat to " + followerId + ": " + e.getMessage());
@@ -250,16 +261,16 @@ public class LeaderLogic extends BaseLogic {
             }
         }
 
-        private Message prepareHeartbeatMessage() throws IOException {
-            int prevLogIndex = nextIndex[followerId] - 1;
+        private Message prepareHeartbeatMessage(int nextIndexDefault) throws IOException {
+            int prevLogIndex = nextIndex.getOrDefault(followerId, nextIndexDefault) - 1;
             LogEntry prevEntry = serverContext.getLog().get(prevLogIndex);
             int prevLogTerm = prevEntry == null ? 0 : prevEntry.getTerm();
             List<LogEntry> entries = new ArrayList<>();
             Message.Builder message = new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC);
 
-            if (index >= nextIndex[followerId]) {
+            if (index >= nextIndex.getOrDefault(followerId, nextIndexDefault)) {
                 // Prepare entries
-                entries = serverContext.getLog().getAll(nextIndex[followerId]);
+                entries = serverContext.getLog().getAll(nextIndex.getOrDefault(followerId, nextIndexDefault));
             }
 
             message.setMeta(new AppendEntriesRpc(term, leaderId, prevLogIndex, prevLogTerm, entries, commitIndex));
@@ -271,11 +282,12 @@ public class LeaderLogic extends BaseLogic {
             Socket socket = null;
 
             try {
-                Address address = Config.SERVERS.get(followerId);
+                Address address = serverContext.getConfig().getServer(followerId);
                 socket = new Socket(address.getIp(), address.getServerPort());
 
                 // Send AppendEntriesRpc
-                NetworkUtils.writeMessage(socket, prepareHeartbeatMessage());
+                int nextIndexDefault = serverContext.getLastIndex() + 1;
+                NetworkUtils.writeMessage(socket, prepareHeartbeatMessage(nextIndexDefault));
                 throwIfInterrupted();
 
                 // Get AppendEntriesRpcReply
@@ -291,7 +303,7 @@ public class LeaderLogic extends BaseLogic {
                 if (appendEntriesRpcReply.isSuccess()) {
                     setNextAndMatchIndex(followerId, index);
                 } else {
-                    nextIndex[followerId]--;
+                    nextIndex.put(followerId, nextIndex.getOrDefault(followerId, nextIndexDefault) - 1);
                 }
             } finally {
                 // Close connection

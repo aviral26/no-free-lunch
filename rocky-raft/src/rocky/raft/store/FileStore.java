@@ -72,4 +72,21 @@ public class FileStore implements Store {
     public synchronized String get(String key) {
         return map.get(key);
     }
+
+    @Override
+    public synchronized String getOrDefault(String key, String defaultValue) {
+        String value = get(key);
+        if (value == null) {
+            value = defaultValue;
+        }
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return "FileStore{" +
+                "map=" + map +
+                ", file=" + file +
+                '}';
+    }
 }

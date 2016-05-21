@@ -5,8 +5,8 @@ import java.io.Serializable;
 public class Message implements Serializable {
 
     public enum Type {
-        GET_LEADER_ADDR,
-        GET_LEADER_ADDR_REPLY,
+        GET_LEADER_CONFIG,
+        GET_LEADER_CONFIG_REPLY,
         DO_POST,
         DO_POST_REPLY,
         GET_POSTS,
@@ -14,7 +14,9 @@ public class Message implements Serializable {
         APPEND_ENTRIES_RPC,
         APPEND_ENTRIES_RPC_REPLY,
         REQUEST_VOTE_RPC,
-        REQUEST_VOTE_RPC_REPLY
+        REQUEST_VOTE_RPC_REPLY,
+        CHANGE_CONFIG,
+        CHANGE_CONFIG_REPLY
     }
 
     public enum Status {

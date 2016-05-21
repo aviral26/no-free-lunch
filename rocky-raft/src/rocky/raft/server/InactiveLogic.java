@@ -11,7 +11,7 @@ public class InactiveLogic extends BaseLogic {
         super(serverContext);
         LOG_TAG += serverContext.getId();
 
-        serverContext.setLeaderAddress(null);
+        serverContext.setLeaderConfig(null);
     }
 
     @Override

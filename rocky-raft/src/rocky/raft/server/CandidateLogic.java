@@ -1,15 +1,17 @@
 package rocky.raft.server;
 
-import rocky.raft.common.Config;
 import rocky.raft.common.TimeoutListener;
 import rocky.raft.common.TimeoutManager;
 import rocky.raft.dto.Message;
 import rocky.raft.dto.RequestVoteRpc;
 import rocky.raft.dto.RequestVoteRpcReply;
+import rocky.raft.dto.ServerConfig;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.NetworkUtils;
 
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -20,11 +22,17 @@ public class CandidateLogic extends BaseLogic {
     }
 
     private String LOG_TAG = "CANDIDATE_LOGIC-";
+
+    private static final int MAX_VOTER_THREADS = 5;
+
     private ExecutorService voteExecutor;
+
     private TimeoutListener timeoutListener;
+
     private OnMajorityReachedListener onMajorityReachedListener;
-    private int clusterSize;
-    private int voteCount;
+
+    private List<ServerConfig> voters;
+
     private boolean released;
 
     CandidateLogic(ServerContext serverContext, TimeoutListener timeoutListener, OnMajorityReachedListener onMajorityReachedListener) {
@@ -32,9 +40,8 @@ public class CandidateLogic extends BaseLogic {
         LOG_TAG += serverContext.getId();
         this.timeoutListener = timeoutListener;
         this.onMajorityReachedListener = onMajorityReachedListener;
-        this.clusterSize = Config.SERVERS.size();
-        this.voteCount = 0;
-        serverContext.setLeaderAddress(null);
+        this.voters = new ArrayList<>();
+        serverContext.setLeaderConfig(null);
 
         resetVoteExecutor();
     }
@@ -47,27 +54,31 @@ public class CandidateLogic extends BaseLogic {
 
     private void resetVoteExecutor() {
         if (voteExecutor != null) voteExecutor.shutdownNow();
-        voteExecutor = Executors.newFixedThreadPool(Math.max(1, clusterSize - 1));
+        voteExecutor = Executors.newFixedThreadPool(MAX_VOTER_THREADS);
     }
 
     private void startElectionAndSetTimeout() {
         TimeoutManager.getInstance().add(LOG_TAG, timeoutListener::onTimeout, getElectionTimeout());
 
-        serverContext.setCurrentTerm(serverContext.getCurrentTerm() + 1);
+        int newTerm = serverContext.getCurrentTerm() + 1;
+        serverContext.setCurrentTerm(newTerm);
+        LogUtils.debug(LOG_TAG, "Starting election for term " + newTerm);
 
-        for (int i = 0; i < Config.SERVERS.size(); i++) {
-            if (i == serverContext.getId()) {
-                incrementVoteCount();
+        for (ServerConfig serverConfig : serverContext.getConfig().getServerConfigs()) {
+            int id = serverConfig.getId();
+            if (id == serverContext.getId()) {
+                grantVote(serverContext.getServerConfig());
             } else {
-                voteExecutor.submit(new SendVoteRequest(i));
+                voteExecutor.submit(new SendVoteRequest(serverConfig));
             }
         }
     }
 
-    private synchronized void incrementVoteCount() {
+    private synchronized void grantVote(ServerConfig serverConfig) {
         if (released) return;
-        voteCount++;
-        if (voteCount > clusterSize / 2) {
+
+        voters.add(serverConfig);
+        if (serverContext.getConfig().isMajority(voters)) {
             onMajorityReachedListener.onMajorityReached();
         }
     }
@@ -83,8 +94,8 @@ public class CandidateLogic extends BaseLogic {
     protected Message handleMessage(Message message, ServerContext serverContext) throws Exception {
         switch (message.getType()) {
 
-            case GET_LEADER_ADDR:
-                LogUtils.debug(LOG_TAG, "Leader not elected yet. Returning null.");
+            case GET_LEADER_CONFIG:
+                LogUtils.debug(LOG_TAG, "Don't know about any leader yet. Returning null.");
                 return null;
 
             case REQUEST_VOTE_RPC:
@@ -97,6 +108,7 @@ public class CandidateLogic extends BaseLogic {
                 // Either these are from current term, in which case a majority should have been handled, or lesser
                 // term. Can safely ignore.
                 LogUtils.debug(LOG_TAG, "Received vote request reply for term " + ((RequestVoteRpc) message.getMeta()).getTerm() + ". Ignoring message.");
+                break;
 
             default:
                 LogUtils.error(LOG_TAG, "Unknown message. Returning null.");
@@ -106,10 +118,10 @@ public class CandidateLogic extends BaseLogic {
 
     private class SendVoteRequest implements Runnable {
 
-        private int sendTo;
+        private ServerConfig serverConfig;
 
-        public SendVoteRequest(int id) {
-            this.sendTo = id;
+        public SendVoteRequest(ServerConfig serverConfig) {
+            this.serverConfig = serverConfig;
         }
 
         @Override
@@ -117,18 +129,19 @@ public class CandidateLogic extends BaseLogic {
             Socket socket = null;
 
             try {
-                socket = new Socket(Config.SERVERS.get(sendTo).getIp(), Config.SERVERS.get(sendTo).getServerPort());
+                socket = new Socket(serverConfig.getAddress().getIp(), serverConfig.getAddress().getServerPort());
                 NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.REQUEST_VOTE_RPC)
                         .setMeta(new RequestVoteRpc(serverContext.getCurrentTerm(), serverContext.getId(), serverContext.getLastIndex(), serverContext.getLastTerm())).build());
                 Message reply = NetworkUtils.readMessage(socket);
+
                 if (reply.getStatus() == Message.Status.OK) {
                     RequestVoteRpcReply requestVoteRpcReply = (RequestVoteRpcReply) reply.getMeta();
                     if (requestVoteRpcReply.isVoteGranted()) {
-                        incrementVoteCount();
+                        grantVote(serverConfig);
                     }
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Could not send vote request to " + Config.SERVERS.get(sendTo));
+                LogUtils.error(LOG_TAG, "Could not send vote request to " + serverConfig);
             } finally {
                 NetworkUtils.closeQuietly(socket);
             }

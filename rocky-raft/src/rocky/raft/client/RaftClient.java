@@ -1,5 +1,6 @@
 package rocky.raft.client;
 
+import rocky.raft.common.Config;
 import rocky.raft.dto.*;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.NetworkUtils;
@@ -11,29 +12,30 @@ public class RaftClient implements Client {
 
     private static final String LOG_TAG = "RAFT_CLIENT";
 
-    private List<Address> servers;
+    private Config config;
 
-    public RaftClient(List<Address> servers) {
-        this.servers = servers;
+    public RaftClient(Config config) {
+        this.config = config;
     }
 
-    private Address findLeader() throws Exception {
-        for (Address address : servers) {
+    private ServerConfig findLeader() throws Exception {
+        for (ServerConfig serverConfig : config.getServerConfigs()) {
             try {
+                Address address = serverConfig.getAddress();
                 Socket socket = new Socket(address.getIp(), address.getClientPort());
-                NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.GET_LEADER_ADDR).build());
+                NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.GET_LEADER_CONFIG).build());
                 Message reply = NetworkUtils.readMessage(socket);
                 NetworkUtils.closeQuietly(socket);
 
                 if (reply.getStatus() == Message.Status.OK) {
-                    Address leaderAddress = ((GetLeaderAddrReply) reply.getMeta()).getLeaderAddress();
-                    if (leaderAddress != null) {
-                        LogUtils.debug(LOG_TAG, "Got leader addr " + leaderAddress);
-                        return leaderAddress;
+                    ServerConfig leaderConfig = ((GetLeaderConfigReply) reply.getMeta()).getLeaderConfig();
+                    if (leaderConfig != null) {
+                        LogUtils.debug(LOG_TAG, "Got leader config " + leaderConfig);
+                        return leaderConfig;
                     }
                 }
             } catch (Exception e) {
-                LogUtils.error(LOG_TAG, "Connection failed: " + address);
+                LogUtils.error(LOG_TAG, "Connection failed: " + serverConfig);
             }
         }
 
@@ -42,27 +44,28 @@ public class RaftClient implements Client {
 
     @Override
     public List<String> lookup() throws Exception {
-        Address leaderAddress = findLeader();
-        return lookup(leaderAddress);
+        ServerConfig leaderConfig = findLeader();
+        return lookup(leaderConfig);
     }
 
     @Override
-    public List<String> lookup(Address address) throws Exception {
+    public List<String> lookup(ServerConfig serverConfig) throws Exception {
+        Address address = serverConfig.getAddress();
         Socket socket = new Socket(address.getIp(), address.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.GET_POSTS).build());
         Message reply = NetworkUtils.readMessage(socket);
         NetworkUtils.closeQuietly(socket);
 
-        if (reply.getStatus() == Message.Status.OK) {
-            return ((GetPostsReply) reply.getMeta()).getPosts();
+        if (reply.getStatus() != Message.Status.OK) {
+            throw new Exception("Failed to lookup");
         }
-        LogUtils.debug(LOG_TAG, "Failed to get posts: " + reply);
-        return null;
+        return ((GetPostsReply) reply.getMeta()).getPosts();
     }
 
     @Override
     public void post(String message) throws Exception {
-        Address leaderAddress = findLeader();
+        ServerConfig leaderConfig = findLeader();
+        Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.DO_POST)
                 .setMeta(new DoPost(message)).build());
@@ -72,5 +75,22 @@ public class RaftClient implements Client {
         if (reply.getStatus() != Message.Status.OK) {
             throw new Exception("Failed to post " + message);
         }
+    }
+
+    @Override
+    public void configChange(Config newConfig) throws Exception {
+        ServerConfig leaderConfig = findLeader();
+        Address leaderAddress = leaderConfig.getAddress();
+        Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
+        NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.CHANGE_CONFIG)
+                .setMeta(new ChangeConfig(newConfig)).build());
+        Message reply = NetworkUtils.readMessage(socket);
+        NetworkUtils.closeQuietly(socket);
+
+        if (reply.getStatus() != Message.Status.OK) {
+            throw new Exception("Failed to change config.");
+        }
+
+        this.config = newConfig;
     }
 }

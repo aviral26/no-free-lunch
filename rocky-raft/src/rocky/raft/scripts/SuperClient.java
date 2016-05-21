@@ -1,67 +1,81 @@
 package rocky.raft.scripts;
 
+import com.google.gson.Gson;
 import rocky.raft.client.Client;
 import rocky.raft.client.RaftClient;
 import rocky.raft.common.Config;
-import rocky.raft.dto.Address;
 import rocky.raft.utils.LogUtils;
-import rocky.raft.utils.Utils;
 
+import java.io.FileReader;
 import java.util.List;
 
 public class SuperClient {
 
     private static final String LOG_TAG = "SUPER_CLIENT";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         SuperClient superClient = new SuperClient();
+        Config config = Config.buildDefault();
 
         switch (args[0]) {
             case "l":
                 if (args.length == 1) {
-                    superClient.doLookup();
+                    superClient.doLookup(config);
                 } else {
-                    superClient.doLookup(Config.SERVERS.get(Integer.valueOf(args[1])));
+                    superClient.doLookup(config, Integer.parseInt(args[1]));
                 }
                 break;
             case "p":
-                superClient.doPost(args[1]);
+                superClient.doPost(config, args[1]);
                 break;
+            case "c":
+                superClient.doChangeConfig(config, args[1]);
             default:
         }
     }
 
-    private void doLookup() {
-        Client client = null;
+    private void doChangeConfig(Config config, String newConfigFile) {
+        Client client;
 
         try {
-            client = new RaftClient(Config.SERVERS);
+            Config newConfig = new Gson().fromJson(new FileReader(newConfigFile), Config.class);
+            LogUtils.debug(LOG_TAG, "Sending new config: " + newConfig);
+            client = new RaftClient(config);
+            client.configChange(newConfig);
+        } catch (Exception e) {
+            LogUtils.error(LOG_TAG, "Failed to do config change.", e);
+        }
+    }
+
+    private void doLookup(Config config) {
+        Client client;
+
+        try {
+            client = new RaftClient(config);
             List<String> messages = client.lookup();
-            LogUtils.debug(LOG_TAG, "Messages:");
-            Utils.dumpList(messages);
+            LogUtils.debug(LOG_TAG, "Messages: " + messages);
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to do lookup", e);
         }
     }
 
-    private void doLookup(Address address) {
-        Client client = null;
+    private void doLookup(Config config, int id) {
+        Client client;
 
         try {
-            client = new RaftClient(Config.SERVERS);
-            List<String> messages = client.lookup(address);
-            LogUtils.debug(LOG_TAG, "Messages:");
-            Utils.dumpList(messages);
+            client = new RaftClient(config);
+            List<String> messages = client.lookup(config.getServerConfig(id));
+            LogUtils.debug(LOG_TAG, "Messages: " + messages);
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to do lookup", e);
         }
     }
 
-    private void doPost(String message) {
-        Client client = null;
+    private void doPost(Config config, String message) {
+        Client client;
 
         try {
-            client = new RaftClient(Config.SERVERS);
+            client = new RaftClient(config);
             client.post(message);
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to do post", e);

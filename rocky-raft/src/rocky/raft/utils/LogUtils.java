@@ -102,7 +102,7 @@ public class LogUtils {
         }
 
         String threadName = Thread.currentThread().getName();
-        return String.format(Locale.US, "[%s] [%s] %s: %s ", LOG_PREFIX, threadName, tag, caller);
+        return String.format(Locale.US, "%d [%s] ", System.currentTimeMillis(), tag);
     }
 
     private static class NoOpLogger implements Logger {
