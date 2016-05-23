@@ -16,4 +16,8 @@ public class Utils {
     public static long getRandomLong(long min, long max) {
         return ThreadLocalRandom.current().nextLong(min, max);
     }
+
+    public static long getRandomLong(){
+        return ThreadLocalRandom.current().nextLong();
+    }
 }

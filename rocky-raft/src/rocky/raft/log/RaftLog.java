@@ -3,6 +3,7 @@ package rocky.raft.log;
 import com.google.gson.Gson;
 import rocky.raft.common.LRUCache;
 import rocky.raft.dto.LogEntry;
+import rocky.raft.utils.LogUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,16 +25,32 @@ public class RaftLog implements Log {
 
     private LogEntry config;
 
+    private int FIRST_LOG_ENTRY_INDEX = 1; // TODO This should be 1 or 0?
+
     public RaftLog(File file) throws IOException {
         this.queueFile = new QueueFile(file);
     }
 
+    private boolean verifyNotDuplicate(LogEntry entry) throws IOException {
+        for(LogEntry logEntry : getAll(FIRST_LOG_ENTRY_INDEX)){
+            if(logEntry.getId() == entry.getId())
+                return false;
+        }
+        return true;
+    }
+
     @Override
-    public synchronized void append(LogEntry entry) throws IOException {
-        queueFile.add(new Gson().toJson(entry).getBytes());
-        last = entry;
-        cache.put(entry.getIndex(), entry);
-        if (last.isConfigEntry()) config = last;
+    public synchronized boolean append(LogEntry entry) throws IOException {
+
+        if(verifyNotDuplicate(entry)){
+            queueFile.add(new Gson().toJson(entry).getBytes());
+            last = entry;
+            cache.put(entry.getIndex(), entry);
+            if (last.isConfigEntry()) config = last;
+            return true;
+        }
+
+        return false;
     }
 
     @Override

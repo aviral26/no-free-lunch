@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface Log {
 
-    void append(LogEntry entry) throws IOException;
+    boolean append(LogEntry entry) throws IOException;
 
     void resize(int size) throws IOException;
 
