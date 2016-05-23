@@ -65,11 +65,16 @@ public class RaftClient implements Client {
 
     @Override
     public void post(String message) throws Exception {
+        post(message, Utils.getRandomLong());
+    }
+
+    @Override
+    public void post(String message, long id) throws Exception {
         ServerConfig leaderConfig = findLeader();
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.DO_POST)
-                .setId(Utils.getRandomLong())
+                .setId(id)
                 .setMeta(new DoPost(message)).build());
         Message reply = NetworkUtils.readMessage(socket);
         NetworkUtils.closeQuietly(socket);
@@ -81,11 +86,16 @@ public class RaftClient implements Client {
 
     @Override
     public void configChange(Config newConfig) throws Exception {
+        configChange(newConfig, Utils.getRandomLong());
+    }
+
+    @Override
+    public void configChange(Config newConfig, long id) throws Exception {
         ServerConfig leaderConfig = findLeader();
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.CHANGE_CONFIG)
-                .setId(Utils.getRandomLong())
+                .setId(id)
                 .setMeta(new ChangeConfig(newConfig)).build());
         Message reply = NetworkUtils.readMessage(socket);
         NetworkUtils.closeQuietly(socket);

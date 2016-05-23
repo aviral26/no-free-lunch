@@ -4,7 +4,9 @@ import com.google.gson.Gson;
 import rocky.raft.client.Client;
 import rocky.raft.client.RaftClient;
 import rocky.raft.common.Config;
+import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.Utils;
 
 import java.io.FileReader;
 import java.util.List;
@@ -26,22 +28,32 @@ public class SuperClient {
                 }
                 break;
             case "p":
-                superClient.doPost(config, args[1]);
+                try {
+                    superClient.doPost(config, args[1], Long.parseLong(args[2]));
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    LogUtils.debug(LOG_TAG, "Will assign a random long ID to post.");
+                    superClient.doPost(config, args[1], Utils.getRandomLong());
+                }
                 break;
             case "c":
-                superClient.doChangeConfig(config, args[1]);
+                try {
+                    superClient.doChangeConfig(config, args[1], Long.parseLong(args[2]));
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    LogUtils.debug(LOG_TAG, "Will assign a random long ID to config change message.");
+                    superClient.doChangeConfig(config, args[1], Utils.getRandomLong());
+                }
             default:
         }
     }
 
-    private void doChangeConfig(Config config, String newConfigFile) {
+    private void doChangeConfig(Config config, String newConfigFile, long id) {
         Client client;
 
         try {
             Config newConfig = new Gson().fromJson(new FileReader(newConfigFile), Config.class);
             LogUtils.debug(LOG_TAG, "Sending new config: " + newConfig);
             client = new RaftClient(config);
-            client.configChange(newConfig);
+            client.configChange(newConfig, id);
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to do config change.", e);
         }
@@ -71,12 +83,12 @@ public class SuperClient {
         }
     }
 
-    private void doPost(Config config, String message) {
+    private void doPost(Config config, String message, long id) {
         Client client;
 
         try {
             client = new RaftClient(config);
-            client.post(message);
+            client.post(message, id);
         } catch (Exception e) {
             LogUtils.error(LOG_TAG, "Failed to do post", e);
         }

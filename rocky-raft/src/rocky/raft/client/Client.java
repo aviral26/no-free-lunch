@@ -13,5 +13,9 @@ public interface Client {
 
     void post(String message) throws Exception;
 
+    void post(String message, long id) throws Exception;
+
     void configChange(Config newConfig) throws Exception;
+
+    void configChange(Config newConfig, long id) throws Exception;
 }
