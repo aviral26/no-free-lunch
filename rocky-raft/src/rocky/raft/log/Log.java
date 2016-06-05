@@ -1,5 +1,6 @@
 package rocky.raft.log;
 
+import rocky.raft.common.Config;
 import rocky.raft.dto.LogEntry;
 
 import java.io.IOException;
@@ -17,5 +18,5 @@ public interface Log {
 
     List<LogEntry> getAll(int fromIndex) throws IOException;
 
-    LogEntry getLatestConfig() throws IOException;
+    Config getLatestConfig() throws IOException;
 }

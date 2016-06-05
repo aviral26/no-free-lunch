@@ -96,7 +96,7 @@ public class ServerContext {
     public Config getConfig() {
         Config config = null;
         try {
-            config = Config.buildFromLog(log);
+            config = Config.getFromLog(log);
         } catch (Exception e) {
             try {
                 config = Config.buildDefault();

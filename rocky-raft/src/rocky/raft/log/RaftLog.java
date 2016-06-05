@@ -1,6 +1,7 @@
 package rocky.raft.log;
 
 import com.google.gson.Gson;
+import rocky.raft.common.Config;
 import rocky.raft.common.LRUCache;
 import rocky.raft.dto.LogEntry;
 
@@ -8,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -16,29 +18,29 @@ import java.util.List;
  */
 public class RaftLog implements Log {
 
-    private QueueFile queueFile;
+    private StackFile stackFile;
 
     private LRUCache<Integer, LogEntry> cache = new LRUCache<>(1024);
 
     private LogEntry last;
 
-    private LogEntry config;
+    private Config config;
 
     public RaftLog(File file) throws IOException {
-        this.queueFile = new QueueFile(file);
+        this.stackFile = new StackFile(file);
     }
 
     @Override
     public synchronized void append(LogEntry entry) throws IOException {
-        queueFile.add(new Gson().toJson(entry).getBytes());
+        stackFile.push(new Gson().toJson(entry).getBytes());
         last = entry;
         cache.put(entry.getIndex(), entry);
-        if (last.isConfigEntry()) config = last;
+        if (last.isConfigEntry()) setConfig(last);
     }
 
     @Override
     public synchronized void resize(int size) throws IOException {
-        queueFile.resize(size);
+        stackFile.pop(stackFile.size() - size);
         last = cache.get(size);
         Iterator<Integer> iterator = cache.keySet().iterator();
         while (iterator.hasNext()) {
@@ -48,13 +50,13 @@ public class RaftLog implements Log {
             }
         }
         config = null;
-        if (last != null && last.isConfigEntry()) config = last;
+        if (last != null && last.isConfigEntry()) setConfig(last);
     }
 
     @Override
     public synchronized LogEntry last() throws IOException {
         if (last == null) {
-            byte[] data = queueFile.last();
+            byte[] data = stackFile.top();
             if (data != null) {
                 last = new Gson().fromJson(new String(data), LogEntry.class);
                 cache.put(last.getIndex(), last);
@@ -67,51 +69,97 @@ public class RaftLog implements Log {
     public synchronized LogEntry get(int logEntryIndex) throws IOException {
         LogEntry logEntry = cache.get(logEntryIndex);
         if (logEntry == null) {
-            byte[] data = queueFile.get(logEntryIndex - 1);
-            if (data != null) {
-                logEntry = new Gson().fromJson(new String(data), LogEntry.class);
-                cache.put(logEntryIndex, logEntry);
-            }
+            GetReverseVisitor visitor = new GetReverseVisitor(logEntryIndex, stackFile.size());
+            stackFile.forEachReverse(visitor);
+            logEntry = visitor.getLogEntry();
         }
         return logEntry;
     }
 
     @Override
     public synchronized List<LogEntry> getAll(int fromLogEntryIndex) throws IOException {
-        Gson gson = new Gson();
         List<LogEntry> logEntryList = new ArrayList<>();
-
-        queueFile.forEach(new QueueFile.ElementVisitor() {
-            int current = -1;
+        stackFile.forEachReverse(new StackFile.ElementVisitor() {
+            int current = stackFile.size();
 
             @Override
-            public boolean read(InputStream in, int length) throws IOException {
-                ++current;
-                if (current >= fromLogEntryIndex - 1) {
-                    LogEntry entry = cache.get(current + 1);
-                    if (entry == null) {
-                        byte[] data = new byte[length];
-                        in.read(data, 0, length);
-                        entry = gson.fromJson(new String(data), LogEntry.class);
-                    }
+            public boolean read(StackFile.Element element, InputStream in) throws IOException {
+                if (current >= fromLogEntryIndex) {
+                    LogEntry entry = getEntry(current, element, in);
                     logEntryList.add(entry);
+                    current--;
+                    return true;
                 }
-                return true;
+                return false;
             }
         });
+        Collections.reverse(logEntryList);
         return logEntryList;
     }
 
     @Override
-    public synchronized LogEntry getLatestConfig() throws IOException {
-        // TODO make this more efficient.
+    public synchronized Config getLatestConfig() throws IOException {
         if (config == null) {
-            for (LogEntry logEntry : getAll(1)) {
-                if (logEntry.isConfigEntry()) {
-                    config = logEntry;
+            stackFile.forEachReverse(new StackFile.ElementVisitor() {
+                int current = stackFile.size();
+
+                @Override
+                public boolean read(StackFile.Element element, InputStream in) throws IOException {
+                    LogEntry entry = getEntry(current, element, in);
+                    if (entry.isConfigEntry()) {
+                        setConfig(entry);
+                        return false;
+                    }
+                    current--;
+                    return true;
                 }
-            }
+            });
         }
         return config;
+    }
+
+    private LogEntry getEntry(int index, StackFile.Element element, InputStream in) throws IOException {
+        LogEntry entry = cache.get(index);
+        if (entry == null) {
+            Gson gson = new Gson();
+            byte[] data = new byte[element.length];
+            in.read(data);
+            entry = gson.fromJson(new String(data), LogEntry.class);
+            cache.put(entry.getIndex(), entry);
+        }
+        return entry;
+    }
+
+    private void setConfig(LogEntry entry) {
+        if (entry == null) config = null;
+        config = new Gson().fromJson(entry.getValue(), Config.class);
+    }
+
+    private class GetReverseVisitor implements StackFile.ElementVisitor {
+
+        private int index;
+        private int current;
+        private LogEntry logEntry;
+
+        public GetReverseVisitor(int index, int size) {
+            this.index = index;
+            this.current = size;
+        }
+
+        public LogEntry getLogEntry() {
+            return logEntry;
+        }
+
+        @Override
+        public boolean read(StackFile.Element element, InputStream in) throws IOException {
+            if (current < index) {
+                return false;
+            }
+            if (current == index) {
+                logEntry = getEntry(current, element, in);
+            }
+            current--;
+            return true;
+        }
     }
 }
