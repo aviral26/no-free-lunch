@@ -86,9 +86,6 @@ public class FollowerLogic extends BaseLogic {
                     requestVoteRpcReply = new RequestVoteRpcReply(currentTerm, false);
                 } else {
                     int votedFor = serverContext.getVotedFor();
-                    if (serverContext.getConfig().getServerConfig(votedFor) == null) {
-                        votedFor = -1;
-                    }
                     boolean hasVotedFor = votedFor == -1 || votedFor == requestVoteRpc.getCandidateId();
                     boolean latestLog = serverContext.getLastIndex() <= requestVoteRpc.getLastLogIndex() && serverContext.getLastTerm() <= requestVoteRpc.getLastLogTerm();
                     if (hasVotedFor && latestLog) {

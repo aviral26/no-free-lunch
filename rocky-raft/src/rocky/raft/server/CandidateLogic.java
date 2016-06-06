@@ -62,6 +62,7 @@ public class CandidateLogic extends BaseLogic {
 
         int newTerm = serverContext.getCurrentTerm() + 1;
         serverContext.setCurrentTerm(newTerm);
+        serverContext.setVotedFor(-1);
         LogUtils.debug(LOG_TAG, "Starting election for term " + newTerm);
 
         for (ServerConfig serverConfig : serverContext.getConfig().getServerConfigs()) {
