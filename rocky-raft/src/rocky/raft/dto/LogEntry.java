@@ -10,17 +10,28 @@ public class LogEntry implements Serializable {
 
     private String value;
 
+    private String id;
+
     private boolean isConfigEntry;
 
-    public LogEntry(int index, int term, String value) {
-        this(index, term, value, false);
+    public LogEntry(int index, int term, String value, String id) {
+        this(index, term, value, id, false);
     }
 
-    public LogEntry(int index, int term, String value, boolean isConfigEntry) {
+    public LogEntry(int index, int term, String value, String id, boolean isConfigEntry) {
         this.index = index;
         this.term = term;
         this.value = value;
         this.isConfigEntry = isConfigEntry;
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public int getIndex() {

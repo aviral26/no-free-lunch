@@ -46,8 +46,8 @@ class LeaderLogic extends BaseLogic {
         Utils.startThread("commit-new-config", () -> {
             if (config.isJointConfig()) {
                 try {
-                    commitToLog(new Gson().toJson(config), true);
-                    LogUtils.debug(LOG_TAG, "Commited new config");
+                    commitToLog(new Gson().toJson(config), Utils.getRandomUuid(), true);
+                    LogUtils.debug(LOG_TAG, "Committed new config");
                 } catch (Exception e) {
                     LogUtils.error(LOG_TAG, "Failed to commit new config", e);
                 }
@@ -83,7 +83,16 @@ class LeaderLogic extends BaseLogic {
 
             case DO_POST:
                 String post = ((DoPost) message.getMeta()).getPost();
-                entry = commitToLog(post, false);
+                entry = commitToLog(post, message.getId(), false);
+
+                // Check if the log rejected to append the entry, in case of a duplicate post.
+                if(entry == null) {
+                    LogUtils.debug(LOG_TAG, "Duplicate post detected. Message: " + message);
+                    return new Message.Builder().setType(Message.Type.DO_POST_REPLY)
+                            .setStatus(Message.Status.ERROR)
+                            .build();
+                }
+
                 waitForCommit(entry);
                 return new Message.Builder().setType(Message.Type.DO_POST_REPLY)
                         .setStatus(Message.Status.OK).build();
@@ -93,11 +102,29 @@ class LeaderLogic extends BaseLogic {
                 Config newConfig = ((ChangeConfig) message.getMeta()).getConfig();
                 Config jointConfig = new Config(oldConfig.getServerConfigs(), newConfig.getServerConfigs(), true);
 
-                entry = commitToLog(new Gson().toJson(jointConfig), true);
+                entry = commitToLog(new Gson().toJson(jointConfig), message.getId(), true);
+
+                // Check if the log rejected to append the entry, in case of a duplicate config change.
+                if(entry == null) {
+                    LogUtils.debug(LOG_TAG, "Duplicate config change detected. Message: " + message);
+                    return new Message.Builder().setType(Message.Type.CHANGE_CONFIG_REPLY)
+                            .setStatus(Message.Status.ERROR)
+                            .build();
+                }
+
                 waitForCommit(entry);
                 LogUtils.debug(LOG_TAG, "Joint configuration committed.");
 
-                entry = commitToLog(new Gson().toJson(newConfig), true);
+                entry = commitToLog(new Gson().toJson(newConfig), message.getId(), true);
+
+                // Check if the log rejected to append the entry, in case of a duplicate config change.
+                if(entry == null) {
+                    LogUtils.debug(LOG_TAG, "Duplicate config change detected. Message: " + message);
+                    return new Message.Builder().setType(Message.Type.CHANGE_CONFIG_REPLY)
+                            .setStatus(Message.Status.ERROR)
+                            .build();
+                }
+
                 waitForCommit(entry);
                 LogUtils.debug(LOG_TAG, "New configuration committed.");
 
@@ -147,12 +174,14 @@ class LeaderLogic extends BaseLogic {
         }
     }
 
-    private synchronized LogEntry commitToLog(String value, boolean isConfigEntry) throws Exception {
+    private synchronized LogEntry commitToLog(String value, String id, boolean isConfigEntry) throws Exception {
         int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
         int leaderId = serverContext.getId();
-        LogEntry entry = new LogEntry(lastIndex + 1, term, value, isConfigEntry);
+        LogEntry entry = new LogEntry(lastIndex + 1, term, value, id, isConfigEntry);
+
         serverContext.getLog().append(entry);
+
         setNextAndMatchIndex(leaderId, lastIndex + 1);
         return entry;
     }
@@ -172,7 +201,7 @@ class LeaderLogic extends BaseLogic {
             for (ServerConfig serverConfig : serverContext.getConfig().getAll()) {
                 int followerId = serverConfig.getId();
                 if (followerId != leaderId) {
-                    heartbeatExecutor.submit(new SendHearbeatTask(followerId, index, term, leaderId, commitIndex));
+                    heartbeatExecutor.submit(new SendHeartbeatTask(followerId, index, term, leaderId, commitIndex));
                 } else {
                     onHeartbeatSent(serverConfig);
                 }
@@ -223,7 +252,7 @@ class LeaderLogic extends BaseLogic {
         matchIndex.put(id, index);
     }
 
-    private class SendHearbeatTask implements Runnable {
+    private class SendHeartbeatTask implements Runnable {
 
         private int followerId;
 
@@ -235,7 +264,7 @@ class LeaderLogic extends BaseLogic {
 
         private int commitIndex;
 
-        public SendHearbeatTask(int followerId, int index, int term, int leaderId, int commitIndex) {
+        public SendHeartbeatTask(int followerId, int index, int term, int leaderId, int commitIndex) {
             this.followerId = followerId;
             this.index = index;
             this.term = term;

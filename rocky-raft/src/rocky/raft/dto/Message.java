@@ -28,6 +28,8 @@ public class Message implements Serializable {
 
     private Status status;
 
+    private String id;
+
     private Meta meta;
 
     private Message() {
@@ -38,6 +40,14 @@ public class Message implements Serializable {
         this.type = type;
         this.status = status;
         this.meta = meta;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public Type getType() {
@@ -57,6 +67,7 @@ public class Message implements Serializable {
         return "Message{" +
                 "type=" + type +
                 ", status=" + status +
+                ", id=" + id +
                 ", meta=" + meta +
                 '}';
     }
@@ -68,7 +79,13 @@ public class Message implements Serializable {
     public static class Builder {
         private Message.Type type;
         private Message.Status status;
+        private String id;
         private Meta meta;
+
+        public Builder setId(String id) {
+            this.id = id;
+            return this;
+        }
 
         public Builder setType(Message.Type type) {
             this.type = type;

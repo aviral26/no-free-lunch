@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import rocky.raft.common.Config;
 import rocky.raft.common.LRUCache;
 import rocky.raft.dto.LogEntry;
+import rocky.raft.utils.LogUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,8 @@ public class RaftLog implements Log {
 
     private StackFile stackFile;
 
+    private static final String LOG_TAG = "RaftLog-";
+
     private LRUCache<Integer, LogEntry> cache = new LRUCache<>(1024);
 
     private LogEntry last;
@@ -32,6 +35,15 @@ public class RaftLog implements Log {
 
     @Override
     public synchronized void append(LogEntry entry) throws IOException {
+
+        CheckDuplicateEntry checkDuplicateEntry = new CheckDuplicateEntry(entry);
+        stackFile.forEachReverse(checkDuplicateEntry);
+
+        if (checkDuplicateEntry.isFlag()) {
+            LogUtils.debug(LOG_TAG, "Duplicate entry. Not appending.");
+            return;
+        }
+
         stackFile.push(new Gson().toJson(entry).getBytes());
         last = entry;
         cache.put(entry.getIndex(), entry);
@@ -160,6 +172,33 @@ public class RaftLog implements Log {
             }
             current--;
             return true;
+        }
+    }
+
+    private class CheckDuplicateEntry implements StackFile.ElementVisitor {
+
+        private boolean flag;
+        private int current;
+        private LogEntry entry;
+
+        CheckDuplicateEntry(LogEntry entry) {
+            flag = false;
+            current = stackFile.size();
+            this.entry = entry;
+        }
+
+        public boolean isFlag() {
+            return flag;
+        }
+
+        @Override
+        public boolean read(StackFile.Element element, InputStream in) throws IOException {
+            LogEntry logEntry = getEntry(current, element, in);
+            if (logEntry.getId().equals(entry.getId())) {
+                this.flag = true;
+                return true;
+            }
+            return false;
         }
     }
 }
