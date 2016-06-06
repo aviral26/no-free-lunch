@@ -64,12 +64,7 @@ public class RaftClient implements Client {
     }
 
     @Override
-    public void post(String message) throws Exception {
-        post(message, Utils.getRandomLong());
-    }
-
-    @Override
-    public void post(String message, long id) throws Exception {
+    public void post(String message, String id) throws Exception {
         ServerConfig leaderConfig = findLeader();
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
@@ -85,12 +80,7 @@ public class RaftClient implements Client {
     }
 
     @Override
-    public void configChange(Config newConfig) throws Exception {
-        configChange(newConfig, Utils.getRandomLong());
-    }
-
-    @Override
-    public void configChange(Config newConfig, long id) throws Exception {
+    public void configChange(Config newConfig, String id) throws Exception {
         ServerConfig leaderConfig = findLeader();
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());

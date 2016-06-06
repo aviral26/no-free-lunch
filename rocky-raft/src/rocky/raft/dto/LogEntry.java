@@ -10,15 +10,15 @@ public class LogEntry implements Serializable {
 
     private String value;
 
-    private long id;
+    private String id;
 
     private boolean isConfigEntry;
 
-    public LogEntry(int index, int term, String value, long id) {
+    public LogEntry(int index, int term, String value, String id) {
         this(index, term, value, id, false);
     }
 
-    public LogEntry(int index, int term, String value, long id, boolean isConfigEntry) {
+    public LogEntry(int index, int term, String value, String id, boolean isConfigEntry) {
         this.index = index;
         this.term = term;
         this.value = value;
@@ -26,11 +26,11 @@ public class LogEntry implements Serializable {
         this.id = id;
     }
 
-    public long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(String id) {
         this.id = id;
     }
 

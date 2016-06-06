@@ -33,8 +33,8 @@ public class Config implements Serializable {
         initConfigs(this);
     }
 
-    public static Config buildFromLog(Log log) throws IOException {
-        Config config = new Gson().fromJson(log.getLatestConfig().getValue(), Config.class);
+    public static Config getFromLog(Log log) throws IOException {
+        Config config = log.getLatestConfig();
         config.initConfigs(config);
         return config;
     }

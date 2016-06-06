@@ -11,11 +11,7 @@ public interface Client {
 
     List<String> lookup(ServerConfig serverConfig) throws Exception;
 
-    void post(String message) throws Exception;
+    void post(String message, String id) throws Exception;
 
-    void post(String message, long id) throws Exception;
-
-    void configChange(Config newConfig) throws Exception;
-
-    void configChange(Config newConfig, long id) throws Exception;
+    void configChange(Config newConfig, String id) throws Exception;
 }

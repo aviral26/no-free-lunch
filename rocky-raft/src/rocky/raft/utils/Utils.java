@@ -1,5 +1,6 @@
 package rocky.raft.utils;
 
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Utils {
@@ -17,7 +18,7 @@ public class Utils {
         return ThreadLocalRandom.current().nextLong(min, max);
     }
 
-    public static long getRandomLong(){
-        return ThreadLocalRandom.current().nextLong();
+    public static String getRandomUuid(){
+        return UUID.randomUUID().toString();
     }
 }

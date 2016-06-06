@@ -28,7 +28,7 @@ public class Message implements Serializable {
 
     private Status status;
 
-    private long id;
+    private String id;
 
     private Meta meta;
 
@@ -42,11 +42,11 @@ public class Message implements Serializable {
         this.meta = meta;
     }
 
-    public long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -79,10 +79,10 @@ public class Message implements Serializable {
     public static class Builder {
         private Message.Type type;
         private Message.Status status;
-        private long id;
+        private String id;
         private Meta meta;
 
-        public Builder setId(long id) {
+        public Builder setId(String id) {
             this.id = id;
             return this;
         }

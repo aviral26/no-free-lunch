@@ -46,7 +46,7 @@ class LeaderLogic extends BaseLogic {
         Utils.startThread("commit-new-config", () -> {
             if (config.isJointConfig()) {
                 try {
-                    commitToLog(new Gson().toJson(config), Utils.getRandomLong(), true);
+                    commitToLog(new Gson().toJson(config), Utils.getRandomUuid(), true);
                     LogUtils.debug(LOG_TAG, "Committed new config");
                 } catch (Exception e) {
                     LogUtils.error(LOG_TAG, "Failed to commit new config", e);
@@ -174,15 +174,13 @@ class LeaderLogic extends BaseLogic {
         }
     }
 
-    private synchronized LogEntry commitToLog(String value, long id, boolean isConfigEntry) throws Exception {
+    private synchronized LogEntry commitToLog(String value, String id, boolean isConfigEntry) throws Exception {
         int lastIndex = serverContext.getLastIndex();
         int term = serverContext.getCurrentTerm();
         int leaderId = serverContext.getId();
         LogEntry entry = new LogEntry(lastIndex + 1, term, value, id, isConfigEntry);
 
-        // Check for duplicates.
-        if(!serverContext.getLog().append(entry))
-            return null;
+        serverContext.getLog().append(entry);
 
         setNextAndMatchIndex(leaderId, lastIndex + 1);
         return entry;

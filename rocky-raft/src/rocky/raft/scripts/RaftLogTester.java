@@ -4,6 +4,7 @@ import rocky.raft.dto.LogEntry;
 import rocky.raft.log.RaftLog;
 import rocky.raft.utils.Assertions;
 import rocky.raft.utils.LogUtils;
+import rocky.raft.utils.Utils;
 
 import java.io.File;
 
@@ -31,10 +32,10 @@ public class RaftLogTester {
         file.delete();
         RaftLog raftLog = new RaftLog(file);
 
-        raftLog.append(new LogEntry(1, 1, "m1"));
-        raftLog.append(new LogEntry(2, 2, "m2"));
+        raftLog.append(new LogEntry(1, 1, "m1", "1"));
+        raftLog.append(new LogEntry(2, 2, "m2", "2"));
 
-        Assertions.checkIfEquals(raftLog.last(), new LogEntry(2, 2, "m2"), "Last LogEntry didn't match");
+        Assertions.checkIfEquals(raftLog.last(), new LogEntry(2, 2, "m2", "2"), "Last LogEntry didn't match");
 
         file.delete();
     }
@@ -46,13 +47,13 @@ public class RaftLogTester {
         file.delete();
         RaftLog raftLog = new RaftLog(file);
 
-        raftLog.append(new LogEntry(1, 1, "m1"));
-        raftLog.append(new LogEntry(2, 2, "m2"));
-        raftLog.append(new LogEntry(3, 3, "m3"));
+        raftLog.append(new LogEntry(1, 1, "m1", "1"));
+        raftLog.append(new LogEntry(2, 2, "m2", "2"));
+        raftLog.append(new LogEntry(3, 3, "m3", "3"));
 
-        Assertions.checkIfEquals(raftLog.get(1), new LogEntry(1, 1, "m1"), "LogEntry didn't match");
-        Assertions.checkIfEquals(raftLog.get(2), new LogEntry(2, 2, "m2"), "LogEntry didn't match");
-        Assertions.checkIfEquals(raftLog.get(3), new LogEntry(3, 3, "m3"), "LogEntry didn't match");
+        Assertions.checkIfEquals(raftLog.get(1), new LogEntry(1, 1, "m1", "1"), "LogEntry didn't match");
+        Assertions.checkIfEquals(raftLog.get(2), new LogEntry(2, 2, "m2", "2"), "LogEntry didn't match");
+        Assertions.checkIfEquals(raftLog.get(3), new LogEntry(3, 3, "m3", "3"), "LogEntry didn't match");
 
         file.delete();
     }
@@ -65,12 +66,12 @@ public class RaftLogTester {
         RaftLog raftLog = new RaftLog(file);
 
         for (int i = 0; i < 10; ++i) {
-            raftLog.append(new LogEntry(i + 1, i, String.valueOf(i)));
+            raftLog.append(new LogEntry(i + 1, i, String.valueOf(i), String.valueOf(i)));
         }
 
         raftLog.resize(1);
 
-        Assertions.checkIfEquals(raftLog.last(), new LogEntry(1, 0, "0"), "LogEntry didn't match");
+        Assertions.checkIfEquals(raftLog.last(), new LogEntry(1, 0, "0", "0"), "LogEntry didn't match");
 
         file.delete();
     }
