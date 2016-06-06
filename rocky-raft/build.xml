@@ -1,0 +1,52 @@
+<project default="all">
+
+    <target name="clean">
+        <delete dir="build"/>
+        <delete>
+            <fileset dir=".">
+                <include name="*.jar"/>
+            </fileset>
+        </delete>
+    </target>
+
+    <target name="compile" depends="clean">
+        <mkdir dir="build"/>
+        <javac srcdir="src" destdir="build" includeantruntime="false">
+            <classpath>
+                <pathelement path="libs/gson-2.6.2.jar"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <target name="client" depends="compile">
+        <jar destfile="client.jar" basedir="build">
+            <zipgroupfileset dir="libs" includes="gson-2.6.2.jar"/>
+            <manifest>
+                <attribute name="client" value="main"/>
+                <attribute name="Main-Class" value="rocky.raft.scripts.SuperClient"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="server" depends="compile">
+        <jar destfile="server.jar" basedir="build">
+            <zipgroupfileset dir="libs" includes="gson-2.6.2.jar"/>
+            <manifest>
+                <attribute name="server" value="main"/>
+                <attribute name="Main-Class" value="rocky.raft.scripts.StartServer"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="reset-server">
+        <delete>
+            <fileset dir=".">
+                <include name="raft-log-*"/>
+                <include name="raft-store-*"/>
+            </fileset>
+        </delete>
+    </target>
+
+    <target name="all" depends="clean,compile,client,server"/>
+
+</project>
