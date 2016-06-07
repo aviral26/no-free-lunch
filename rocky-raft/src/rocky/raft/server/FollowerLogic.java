@@ -70,7 +70,7 @@ public class FollowerLogic extends BaseLogic {
                     }
 
                     appendEntriesRpcReply = new AppendEntriesRpcReply(currentTerm, true);
-                    LogUtils.debug(LOG_TAG, "Replying true to AppendEntriesRPC.");
+//                    LogUtils.debug(LOG_TAG, "Replying true to AppendEntriesRPC.");
                 }
 
                 return new Message.Builder().setType(Message.Type.APPEND_ENTRIES_RPC_REPLY)

@@ -21,7 +21,7 @@ public class RaftLog implements Log {
 
     private StackFile stackFile;
 
-    private static final String LOG_TAG = "RaftLog-";
+    private static final String LOG_TAG = "RAFT_LOG";
 
     private LRUCache<Integer, LogEntry> cache = new LRUCache<>(1024);
 

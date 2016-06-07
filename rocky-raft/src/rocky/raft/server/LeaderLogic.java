@@ -174,7 +174,7 @@ class LeaderLogic extends BaseLogic {
 
         try {
             // Send new heartbeats
-            LogUtils.debug(LOG_TAG, "Sending heartbeat...");
+//            LogUtils.debug(LOG_TAG, "Sending heartbeat...");
             int index = serverContext.getLastIndex();
             int term = serverContext.getCurrentTerm();
             int leaderId = serverContext.getId();
