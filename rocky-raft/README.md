@@ -21,7 +21,7 @@ A Java implementation of [Raft Consensus Algorithm] (http://web.stanford.edu/~ou
 7. Log file is doubly linked. Can be efficiently traversed in both directions
 
 ##Build
-Uses `ant` build system. Just type the below command to build both `client.jar` and `server.jar`
+Uses `ant` build system and uses Java 8 for compilation. Just type the below command to build both `client.jar` and `server.jar`
 ```
 ant
 ```
