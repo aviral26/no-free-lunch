@@ -1,5 +1,5 @@
-# Raft
-An implementation of the [Raft consensus algorithm] (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
+# rocky-raft
+An implementation of the [Raft Consensus Algorithm] (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
 
 ##Architecture
 1. RaftServer: Handles all network connections and ServerLogic transitions
@@ -28,21 +28,21 @@ ant
 
 ##Run
 ###Server
-RaftServer uses the last config entry in it's log if present or reads the config from `default.config`. `server.jar` expects an integer argument `<id>` to determine it's IP address and ports from the config.
+RaftServer uses the last config entry in it's log if present or reads the config from `default.config`. Expects an integer argument `<id>` to determine it's IP address and ports from the config.
 ```
 java -jar server.jar <id>
 ```
 
 ###Client
-####Lookup
+#####Lookup
 ```
 java -jar client.jar l <optional server ID>
 ```
-####Post
+#####Post
 ```
-java -jar client.jar p "Message" "<optional ID>""
+java -jar client.jar p "Message" "<optional ID>"
 ```
-####Config changes
+#####Config changes
 ```
-java -jar client.jar c <config file>
+java -jar client.jar c "<config file>"
 ```
