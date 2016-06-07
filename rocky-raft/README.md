@@ -1,5 +1,5 @@
 # rocky-raft
-An implementation of the [Raft Consensus Algorithm] (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
+A Java implementation of [Raft Consensus Algorithm] (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14)
 
 ##Architecture
 1. RaftServer: Handles all network connections and ServerLogic transitions
