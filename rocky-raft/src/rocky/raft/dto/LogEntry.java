@@ -76,7 +76,8 @@ public class LogEntry implements Serializable {
         if (index != entry.index) return false;
         if (term != entry.term) return false;
         if (isConfigEntry != entry.isConfigEntry) return false;
-        return value != null ? value.equals(entry.value) : entry.value == null;
+        if (value != null ? !value.equals(entry.value) : entry.value != null) return false;
+        return id != null ? id.equals(entry.id) : entry.id == null;
 
     }
 
@@ -85,6 +86,7 @@ public class LogEntry implements Serializable {
         int result = index;
         result = 31 * result + term;
         result = 31 * result + (value != null ? value.hashCode() : 0);
+        result = 31 * result + (id != null ? id.hashCode() : 0);
         result = 31 * result + (isConfigEntry ? 1 : 0);
         return result;
     }
@@ -95,6 +97,7 @@ public class LogEntry implements Serializable {
                 "index=" + index +
                 ", term=" + term +
                 ", value='" + value + '\'' +
+                ", id='" + id + '\'' +
                 ", isConfigEntry=" + isConfigEntry +
                 '}';
     }

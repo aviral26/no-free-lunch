@@ -4,10 +4,17 @@ import rocky.raft.common.Config;
 
 public class ChangeConfig extends Message.Meta {
 
+    private String id;
+
     private Config config;
 
-    public ChangeConfig(Config config) {
+    public ChangeConfig(String id, Config config) {
+        this.id = id;
         this.config = config;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public Config getConfig() {
@@ -21,7 +28,8 @@ public class ChangeConfig extends Message.Meta {
     @Override
     public String toString() {
         return "ChangeConfig{" +
-                "config=" + config +
+                "id='" + id + '\'' +
+                ", config=" + config +
                 '}';
     }
 }

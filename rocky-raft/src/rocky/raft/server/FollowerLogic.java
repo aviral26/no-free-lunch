@@ -56,8 +56,6 @@ public class FollowerLogic extends BaseLogic {
                 } else {
                     for (LogEntry entry : appendEntriesRpc.getEntries()) {
                         if (log.get(entry.getIndex()) == null)
-                            // TODO if follower detects duplicate entry, should it just ignore it? Will that ever
-                            // happen?
                             log.append(entry);
                         else {
                             LogUtils.debug(LOG_TAG, "Truncating log.");

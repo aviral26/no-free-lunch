@@ -11,7 +11,7 @@
 
     <target name="compile" depends="clean">
         <mkdir dir="build"/>
-        <javac srcdir="src" destdir="build" includeantruntime="false">
+        <javac srcdir="src" destdir="build" debug="true" debuglevel="lines,vars,source" includeantruntime="true">
             <classpath>
                 <pathelement path="libs/gson-2.6.2.jar"/>
             </classpath>

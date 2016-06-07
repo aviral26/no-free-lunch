@@ -4,7 +4,6 @@ import rocky.raft.common.Config;
 import rocky.raft.dto.*;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.NetworkUtils;
-import rocky.raft.utils.Utils;
 
 import java.net.Socket;
 import java.util.List;
@@ -69,8 +68,7 @@ public class RaftClient implements Client {
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.DO_POST)
-                .setId(id)
-                .setMeta(new DoPost(message)).build());
+                .setMeta(new DoPost(id, message)).build());
         Message reply = NetworkUtils.readMessage(socket);
         NetworkUtils.closeQuietly(socket);
 
@@ -85,8 +83,7 @@ public class RaftClient implements Client {
         Address leaderAddress = leaderConfig.getAddress();
         Socket socket = new Socket(leaderAddress.getIp(), leaderAddress.getClientPort());
         NetworkUtils.writeMessage(socket, new Message.Builder().setType(Message.Type.CHANGE_CONFIG)
-                .setId(id)
-                .setMeta(new ChangeConfig(newConfig)).build());
+                .setMeta(new ChangeConfig(id, newConfig)).build());
         Message reply = NetworkUtils.readMessage(socket);
         NetworkUtils.closeQuietly(socket);
 

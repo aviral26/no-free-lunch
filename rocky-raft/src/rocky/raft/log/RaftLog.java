@@ -34,20 +34,19 @@ public class RaftLog implements Log {
     }
 
     @Override
-    public synchronized void append(LogEntry entry) throws IOException {
-
+    public synchronized boolean append(LogEntry entry) throws IOException {
         CheckDuplicateEntry checkDuplicateEntry = new CheckDuplicateEntry(entry);
         stackFile.forEachReverse(checkDuplicateEntry);
-
-        if (checkDuplicateEntry.isFlag()) {
+        if (checkDuplicateEntry.isDuplicate()) {
             LogUtils.debug(LOG_TAG, "Duplicate entry. Not appending.");
-            return;
+            return false;
         }
 
         stackFile.push(new Gson().toJson(entry).getBytes());
         last = entry;
         cache.put(entry.getIndex(), entry);
         if (last.isConfigEntry()) setConfig(last);
+        return true;
     }
 
     @Override
@@ -177,28 +176,29 @@ public class RaftLog implements Log {
 
     private class CheckDuplicateEntry implements StackFile.ElementVisitor {
 
-        private boolean flag;
+        private boolean duplicate;
         private int current;
         private LogEntry entry;
 
         CheckDuplicateEntry(LogEntry entry) {
-            flag = false;
-            current = stackFile.size();
+            this.duplicate = false;
+            this.current = stackFile.size();
             this.entry = entry;
         }
 
-        public boolean isFlag() {
-            return flag;
+        public boolean isDuplicate() {
+            return duplicate;
         }
 
         @Override
         public boolean read(StackFile.Element element, InputStream in) throws IOException {
             LogEntry logEntry = getEntry(current, element, in);
             if (logEntry.getId().equals(entry.getId())) {
-                this.flag = true;
-                return true;
+                this.duplicate = true;
+                return false;
             }
-            return false;
+            current--;
+            return true;
         }
     }
 }

@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import rocky.raft.client.Client;
 import rocky.raft.client.RaftClient;
 import rocky.raft.common.Config;
-import rocky.raft.log.Log;
 import rocky.raft.utils.LogUtils;
 import rocky.raft.utils.Utils;
 

@@ -14,13 +14,13 @@ public class NetworkUtils {
 
     public static Message readMessage(Socket socket) throws IOException, ClassNotFoundException {
         Message message = (Message) new ObjectInputStream(socket.getInputStream()).readObject();
-        LogUtils.debug(LOG_TAG, "Read " + message);
+        //LogUtils.debug(LOG_TAG, "Read " + message);
         return message;
     }
 
     public static void writeMessage(Socket socket, Message message) throws IOException {
         new ObjectOutputStream(socket.getOutputStream()).writeObject(message);
-        LogUtils.debug(LOG_TAG, "Written " + message);
+        //LogUtils.debug(LOG_TAG, "Written " + message);
     }
 
     public static void closeQuietly(Closeable closeable) {
