@@ -15,7 +15,7 @@ A Java implementation of [Raft Consensus Algorithm] (http://web.stanford.edu/~ou
 1. Leader elections
 2. Leader/non-leader failures
 3. Handles configuration changes
-4. Leader waits until it hears from majority before replying to "lookup"
+4. Leader waits until it hears from majority before replying to "lookup" for consistent reads in case of network partitions
 5. Client retries up to 3 times on failures. Provides ID with every "post" to avoid duplicates
 6. Log maintains in-memory write-through LRU cache for log entries
 7. Log file is doubly linked. Can be efficiently traversed in both directions
